@@ -228,9 +228,9 @@ def main():
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8001)
     parser.add_argument(
-        "--transport", default="streamable-http",
+        "--transport", default="stdio",
         choices=["streamable-http", "sse", "stdio"],
-        help="MCP transport: streamable-http (default), sse, or stdio"
+        help="MCP transport: stdio (default), streamable-http, or sse"
     )
     args = parser.parse_args()
 
