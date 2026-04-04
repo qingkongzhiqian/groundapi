@@ -4,7 +4,7 @@
 
 GroundAPI provides a unified data layer for AI Agents — 10 tools covering A-share finance, web search, news, weather, logistics, and more. Supports REST API, MCP, and CLI.
 
-🌐 [Website](https://groundapi.net) · 📖 [Documentation](https://groundapi.net/en/documentation/quick-start) · 🔌 [MCP Server](https://mcp.groundapi.net)
+🌐 [Website](https://groundapi.net) · 📖 [Documentation](https://groundapi.net/en/documentation/quick-start) · 🔌 [MCP Setup](https://groundapi.net/en/documentation/agent-integration)
 
 ---
 
@@ -100,7 +100,7 @@ Pre-built skills for OpenClaw and Smithery that combine GroundAPI tools into rea
 
 - Website: [groundapi.net](https://groundapi.net)
 - API Docs: [groundapi.net/documentation](https://groundapi.net/en/documentation/quick-start)
-- MCP Server: [mcp.groundapi.net](https://mcp.groundapi.net)
+- MCP Setup: [Agent Integration Guide](https://groundapi.net/en/documentation/agent-integration)
 - Smithery: [smithery.ai](https://smithery.ai/server/qingkongzhiqian/ground-api)
 - CLI on PyPI: [groundapi-cli](https://pypi.org/project/groundapi-cli/)
 
