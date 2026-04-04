@@ -230,7 +230,7 @@ def main():
     parser.add_argument(
         "--transport", default="stdio",
         choices=["streamable-http", "sse", "stdio"],
-        help="MCP transport: stdio (default), streamable-http, or sse"
+        help="MCP transport: stdio (default), sse, or stdio"
     )
     args = parser.parse_args()
 
