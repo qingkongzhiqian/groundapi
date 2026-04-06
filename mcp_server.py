@@ -223,7 +223,23 @@ async def life_ip(address: str = "") -> dict:
     return await _call("/v1/life/ip", params)
 
 
+def _init_telemetry() -> None:
+    otel_enabled = os.getenv("OTEL_ENABLED", "").lower() in ("true", "1", "yes")
+    otel_endpoint = os.getenv("OTEL_ENDPOINT", "")
+    otel_token = os.getenv("OTEL_TOKEN", "")
+
+    if otel_enabled and otel_endpoint:
+        from api.telemetry import setup_telemetry
+        setup_telemetry(
+            "groundapi-mcp",
+            otel_endpoint=otel_endpoint,
+            otel_token=otel_token,
+        )
+
+
 def main():
+    _init_telemetry()
+
     parser = argparse.ArgumentParser(description="GroundAPI MCP Server")
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8001)
