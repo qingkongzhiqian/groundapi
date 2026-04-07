@@ -52,14 +52,30 @@ async def finance_stock(
     indicators: str = "ma,macd,rsi",
     limit: int = 10,
 ) -> dict:
-    """Query A-share stock data. Supports multiple modes:
-    - Search: finance_stock(keyword="茅台") — find stocks by name or code
-    - Latest quote: finance_stock(symbol="600519") — current price, PE, PB, dividend yield
-    - Specific date: finance_stock(symbol="600519", date="2026-03-28")
-    - History: finance_stock(symbol="600519", days=60) — last N trading days
-    - With technicals: finance_stock(symbol="600519", days=60, include="technicals")
-    - With fundamentals: finance_stock(symbol="600519", include="fundamental")
-    Either keyword or symbol is required."""
+    """Look up individual A-share stock data — search by name, get real-time quotes, pull historical prices, or retrieve technicals/fundamentals for a single stock.
+
+    Use this tool when the user asks about a specific stock (by name or symbol code).
+    Do NOT use this tool for screening multiple stocks by criteria — use finance_stock_screen instead.
+    Do NOT use this tool for broad market or sector overviews — use finance_market instead.
+
+    Modes:
+    - Search by name: finance_stock(keyword="茅台") → returns matching stocks with basic info.
+    - Latest quote: finance_stock(symbol="600519") → current price, change, PE, PB, dividend yield.
+    - Specific date: finance_stock(symbol="600519", date="2026-03-28") → quote on that date.
+    - Historical: finance_stock(symbol="600519", days=60) → last N trading-day OHLCV records.
+    - With technicals: finance_stock(symbol="600519", days=60, include="technicals") → adds MA, MACD, RSI.
+    - With fundamentals: finance_stock(symbol="600519", include="fundamental") → adds PE, PB, ROE, revenue.
+
+    Returns a JSON dict with a "data" key. The shape depends on the mode used.
+
+    Args:
+        keyword: Stock name or partial code to search. Mutually exclusive with symbol.
+        symbol: 6-digit A-share stock code (e.g. "600519"). Mutually exclusive with keyword.
+        date: Specific trading date in YYYY-MM-DD format. Only used with symbol.
+        days: Number of recent trading days of history to return (1-250). 0 means latest only.
+        include: Comma-separated extras — "technicals" and/or "fundamental". Only used with symbol.
+        indicators: Technical indicator list (default "ma,macd,rsi"). Only used when include contains "technicals".
+        limit: Max results when searching by keyword (1-50, default 10)."""
     params: dict = {}
     if keyword:
         params["keyword"] = keyword
@@ -89,10 +105,25 @@ async def finance_stock_screen(
     order: str = "desc",
     limit: int = 20,
 ) -> dict:
-    """Screen stocks by criteria or get top/bottom rankings.
-    - Ranking: finance_stock_screen(sort_by="change_pct", limit=10) — today's top gainers
-    - Filter: finance_stock_screen(industry="半导体", pe_max=30) — semiconductor stocks with PE < 30
-    All filter params are optional. With no filters, returns a simple ranking."""
+    """Screen and rank multiple A-share stocks by financial criteria — filter by industry, PE, PB, market cap, or dividend yield, and sort the results.
+
+    Use this tool when the user wants to find stocks matching specific criteria or see top/bottom rankings (e.g. biggest gainers, cheapest PE).
+    Do NOT use this tool for a single stock lookup — use finance_stock instead.
+    Do NOT use this tool for market-level or sector-level summaries — use finance_market instead.
+
+    Returns a JSON dict with a "data" list of stock objects, each containing symbol, name, price, change_pct, and the requested metrics.
+
+    Args:
+        industry: Filter by industry name in Chinese (e.g. "半导体", "白酒"). Empty means all industries.
+        pe_max: Maximum PE ratio (0 means no upper limit).
+        pe_min: Minimum PE ratio (0 means no lower limit).
+        pb_max: Maximum PB ratio (0 means no upper limit).
+        min_market_cap: Minimum market cap in 亿元 (0 means no limit).
+        max_market_cap: Maximum market cap in 亿元 (0 means no limit).
+        min_dividend_yield: Minimum dividend yield in percent (0 means no limit).
+        sort_by: Field to sort results — "change_pct", "pe", "pb", "market_cap", "dividend_yield", "turnover" (default "change_pct").
+        order: Sort direction — "desc" or "asc" (default "desc").
+        limit: Number of results to return (1-100, default 20)."""
     params: dict = {"sort_by": sort_by, "order": order, "limit": limit}
     if industry:
         params["industry"] = industry
@@ -120,14 +151,22 @@ async def finance_market(
     sort_by: str = "change_pct",
     limit: int = 20,
 ) -> dict:
-    """Get market data. Supports multiple modes:
-    - Market overview: finance_market() — indices, breadth, volume, top sectors, macro
-    - With sectors: finance_market(include="sectors") — add sector ranking
-    - With funds: finance_market(include="funds") — add fund ranking
-    - With valuation: finance_market(include="valuation") — add industry valuation map
-    - With macro: finance_market(include="macro") — add macro indicators
-    - All extras: finance_market(include="sectors,funds,valuation,macro")
-    - Sector detail: finance_market(sector="半导体") — specific sector with constituents"""
+    """Get A-share market-level data — major index quotes, market breadth, volume, and optionally sector rankings, fund flows, valuation maps, or macro indicators.
+
+    Use this tool when the user asks about the overall market, sector performance, or macro-economic conditions.
+    Use the sector param to drill into one specific sector and see its constituent stocks.
+    Do NOT use this tool for individual stock queries — use finance_stock instead.
+    Do NOT use this tool for stock screening/filtering — use finance_stock_screen instead.
+
+    Returns a JSON dict with "overview" (indices, breadth, volume) plus optional keys depending on include/sector params.
+
+    Args:
+        date: Trading date in YYYY-MM-DD format. Empty means the latest trading day.
+        include: Comma-separated extras to append — "sectors", "funds", "valuation", "macro", or combinations like "sectors,macro".
+        sector: Specific sector name in Chinese (e.g. "半导体") to get that sector's detail and constituent stocks. Overrides include.
+        type: Sector classification — "industry" or "concept" (default "industry").
+        sort_by: Sort field for sector/constituent lists — "change_pct", "market_cap", etc. (default "change_pct").
+        limit: Max items in sector/constituent lists (1-100, default 20)."""
     params: dict = {"type": type, "sort_by": sort_by, "limit": limit}
     if date:
         params["date"] = date
@@ -147,10 +186,20 @@ async def finance_fund(
     order: str = "desc",
     limit: int = 20,
 ) -> dict:
-    """Query fund data: search, detail, or ranking.
-    - Search: finance_fund(keyword="沪深300")
-    - Detail: finance_fund(code="110011")
-    - Ranking: finance_fund(sort_by="return_1y", limit=20)"""
+    """Search, view details of, or rank Chinese public funds (公募基金) — ETFs, index funds, bond funds, etc.
+
+    Use this tool when the user asks about a specific fund, wants to find funds by name, or wants fund performance rankings.
+    Do NOT use this tool for stock data — use finance_stock or finance_stock_screen instead.
+
+    Returns a JSON dict with a "data" key — a list of fund objects (search/ranking) or a single fund detail object.
+
+    Args:
+        keyword: Fund name or partial code to search (e.g. "沪深300", "110011"). Empty for ranking mode.
+        code: Exact fund code for detail view (e.g. "110011"). Returns NAV history, manager info, and holdings.
+        fund_type: Filter by type — "equity", "bond", "index", "hybrid", "money", "qdii". Empty means all.
+        sort_by: Ranking field — "perf_ytd", "return_1y", "return_3y", "nav", "size" (default "perf_ytd").
+        order: Sort direction — "desc" or "asc" (default "desc").
+        limit: Number of results (1-100, default 20). Ignored when code is provided."""
     params: dict = {"sort_by": sort_by, "order": order, "limit": limit}
     if keyword:
         params["keyword"] = keyword
@@ -168,22 +217,48 @@ async def finance_fund(
 
 @mcp.tool()
 async def info_search(query: str, count: int = 10, recency: str = "noLimit") -> dict:
-    """Search the web. Returns titles, links, and snippets.
-    query: search keywords. count: number of results (1-50). recency: oneDay/oneWeek/oneMonth/oneYear/noLimit."""
+    """Search the web using multiple search engines and return a list of results with titles, URLs, and text snippets.
+
+    Use this tool when the user needs to find information on the internet — news, articles, documentation, etc.
+    Do NOT use this tool to read full page content — use info_scrape on a specific URL instead.
+    Do NOT use this tool for structured news feeds — use info_news instead.
+
+    Returns a JSON dict with a "results" list, each containing "title", "url", and "snippet".
+
+    Args:
+        query: Search keywords or question (required, non-empty string).
+        count: Number of results to return (1-50, default 10).
+        recency: Time filter — "oneDay", "oneWeek", "oneMonth", "oneYear", or "noLimit" (default "noLimit")."""
     return await _call("/v1/info/search", {"q": query, "count": count, "recency": recency})
 
 
 @mcp.tool()
 async def info_scrape(url: str) -> dict:
-    """Read a webpage and return its content as markdown.
-    url: the webpage URL to scrape."""
+    """Fetch a single webpage and extract its main content as clean Markdown text, stripping navigation, ads, and boilerplate.
+
+    Use this tool when the user wants to read or analyze a specific webpage's content.
+    Do NOT use this tool to search for pages — use info_search first to find relevant URLs.
+
+    Returns a JSON dict with "title", "content" (Markdown string), and "url".
+
+    Args:
+        url: Full URL of the webpage to scrape (required, must start with http:// or https://)."""
     return await _call("/v1/info/scrape", {"url": url})
 
 
 @mcp.tool()
 async def info_news(category: str = "finance", limit: int = 20) -> dict:
-    """Get latest news headlines.
-    category: finance/general/tech/sports/... (default: finance). limit: number of articles (1-50)."""
+    """Get the latest news headlines organized by category, returning titles, sources, publish times, and URLs.
+
+    Use this tool when the user asks for recent news or trending topics in a specific category.
+    Do NOT use this tool for searching a specific topic — use info_search instead.
+    Do NOT use this tool to read a full article — use info_scrape with the article URL instead.
+
+    Returns a JSON dict with a "data" list of article objects, each containing "title", "source", "time", and "url".
+
+    Args:
+        category: News category — "finance", "general", "tech", "sports", "entertainment", "world" (default "finance").
+        limit: Number of articles to return (1-50, default 20)."""
     return await _call("/v1/info/news", {"category": category, "limit": limit})
 
 
@@ -193,8 +268,17 @@ async def info_news(category: str = "finance", limit: int = 20) -> dict:
 
 @mcp.tool()
 async def life_weather(city: str = "", location: str = "", forecast: bool = False) -> dict:
-    """Get weather data: current conditions and optional 7-day forecast.
-    city: city name (e.g. '北京'). location: lat,lng. forecast: include 7-day forecast."""
+    """Get current weather conditions and optionally a 7-day forecast for a city or geographic coordinate.
+
+    Use this tool when the user asks about weather, temperature, humidity, wind, or forecasts.
+    Do NOT use this tool for non-weather location info — use life_ip for IP-based geolocation.
+
+    Returns a JSON dict with "current" (temperature, humidity, wind, condition) and optionally "forecast" (7-day array).
+
+    Args:
+        city: City name in Chinese or English (e.g. "北京", "Tokyo"). Provide either city or location.
+        location: Geographic coordinates as "lat,lng" (e.g. "39.9,116.4"). Provide either city or location.
+        forecast: If true, include a 7-day daily forecast in the response (default false)."""
     params: dict = {"forecast": forecast}
     if city:
         params["city"] = city
@@ -205,8 +289,16 @@ async def life_weather(city: str = "", location: str = "", forecast: bool = Fals
 
 @mcp.tool()
 async def life_logistics(number: str, company: str = "") -> dict:
-    """Track a courier package.
-    number: tracking number. company: courier company code (auto-detected if omitted)."""
+    """Track a courier/express package and return its delivery status and tracking history.
+
+    Use this tool when the user provides a tracking number and wants to know the package status.
+    Do NOT use this tool without a tracking number — it cannot search for packages by other criteria.
+
+    Returns a JSON dict with "company", "status" (e.g. "in_transit", "delivered"), and "traces" (chronological list of tracking events).
+
+    Args:
+        number: Package tracking number (required, e.g. "SF1234567890").
+        company: Courier company code (e.g. "sf", "yd", "zt"). Auto-detected from tracking number format if omitted."""
     params: dict = {"number": number}
     if company:
         params["company"] = company
@@ -215,8 +307,15 @@ async def life_logistics(number: str, company: str = "") -> dict:
 
 @mcp.tool()
 async def life_ip(address: str = "") -> dict:
-    """Get IP geolocation info.
-    address: IP address (defaults to caller IP if omitted)."""
+    """Look up geolocation information for an IP address — country, region, city, timezone, and ISP.
+
+    Use this tool when the user asks where an IP address is located or wants to know their own IP info.
+    Do NOT use this tool for weather data — use life_weather instead.
+
+    Returns a JSON dict with "ip", "country", "region", "city", "timezone", "isp", and "lat"/"lng".
+
+    Args:
+        address: IPv4 or IPv6 address to look up (e.g. "8.8.8.8"). If omitted, returns info for the caller's IP."""
     params: dict = {}
     if address:
         params["address"] = address
