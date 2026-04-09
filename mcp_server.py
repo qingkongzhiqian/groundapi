@@ -1,6 +1,10 @@
 """
 GroundAPI MCP Server — 10 tools for AI Agents.
-Reads API key from GROUNDAPI_API_KEY environment variable.
+
+Requires Bearer-token authentication: the client must supply its own
+GroundAPI API Key via ``Authorization: Bearer sk_gapi_...``.
+The key is forwarded as ``X-API-Key`` to the upstream API server on every
+tool call, so each user pays with their own quota.
 """
 
 import argparse
@@ -8,33 +12,34 @@ import os
 
 import httpx
 from fastmcp import FastMCP
+from fastmcp.server.auth.providers.debug import DebugTokenVerifier
+from fastmcp.server.dependencies import get_access_token
 
 API_BASE = os.getenv("API_BASE_URL", "http://localhost:8000")
-API_KEY = os.getenv("GROUNDAPI_API_KEY", "")
+
+auth = DebugTokenVerifier(
+    validate=lambda token: token.startswith("sk_gapi_"),
+)
 
 mcp = FastMCP(
     "GroundAPI",
+    auth=auth,
     instructions=(
         "One-stop data layer for AI Agents. "
         "Finance: A-share stock quotes, market overview, sector analysis, "
         "fund data, macro indicators. "
         "Info: web search, news, webpage scraping. "
         "Life: weather, logistics tracking, IP geolocation. "
-        "API key is configured server-side — no need to pass it per tool call."
+        "Requires authentication: pass your GroundAPI API Key as a Bearer token."
     ),
 )
 
 
-def _headers() -> dict:
-    h = {"Content-Type": "application/json"}
-    if API_KEY:
-        h["X-API-Key"] = API_KEY
-    return h
-
-
 async def _call(path: str, params: dict | None = None) -> dict:
+    token: str = get_access_token()
+    headers = {"Content-Type": "application/json", "X-API-Key": token}
     async with httpx.AsyncClient(base_url=API_BASE, timeout=60) as client:
-        resp = await client.get(path, params=params or {}, headers=_headers())
+        resp = await client.get(path, params=params or {}, headers=headers)
         return resp.json()
 
 
