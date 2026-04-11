@@ -1,19 +1,27 @@
 """
-GroundAPI MCP Server — 10 tools for AI Agents.
+GroundAPI MCP Server — tools for AI Agents.
+
+Finance: 4 tools covering all A-share data (69 BiyingAPI endpoints).
+Info: 3 tools (search, scrape, news).
+Life: 3 tools (weather, logistics, IP).
 
 Requires Bearer-token authentication: the client must supply its own
 GroundAPI API Key via ``Authorization: Bearer sk_gapi_...``.
-The key is forwarded as ``X-API-Key`` to the upstream API server on every
-tool call, so each user pays with their own quota.
 """
 
 import argparse
 import os
+from pathlib import Path
 
+from dotenv import load_dotenv
 import httpx
 from fastmcp import FastMCP
 from fastmcp.server.auth.providers.debug import DebugTokenVerifier
 from fastmcp.server.dependencies import get_access_token
+
+_env_file = Path(__file__).resolve().parent.parent.parent / ".env"
+if _env_file.exists():
+    load_dotenv(_env_file)
 
 API_BASE = os.getenv("API_BASE_URL", "http://localhost:8000")
 
@@ -26,8 +34,8 @@ mcp = FastMCP(
     auth=auth,
     instructions=(
         "One-stop data layer for AI Agents. "
-        "Finance: A-share stock quotes, market overview, sector analysis, "
-        "fund data, macro indicators. "
+        "Finance: A-share stock/index/ETF data (13 aspects), market overview (5 scopes), "
+        "multi-dimensional screening, universal search across 11,780 securities. "
         "Info: web search, news, webpage scraping. "
         "Life: weather, logistics tracking, IP geolocation. "
         "Requires authentication: pass your GroundAPI API Key as a Bearer token."
@@ -38,79 +46,119 @@ mcp = FastMCP(
 async def _call(path: str, params: dict | None = None) -> dict:
     token: str = get_access_token()
     headers = {"Content-Type": "application/json", "X-API-Key": token}
-    async with httpx.AsyncClient(base_url=API_BASE, timeout=60) as client:
+    transport = httpx.AsyncHTTPTransport(proxy=None)
+    async with httpx.AsyncClient(base_url=API_BASE, timeout=60, transport=transport) as client:
         resp = await client.get(path, params=params or {}, headers=headers)
         return resp.json()
 
 
 # ---------------------------------------------------------------------------
-# Finance (5 tools)
+# Finance (4 tools)
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
 async def finance_stock(
-    keyword: str = "",
     symbol: str = "",
-    date: str = "",
-    days: int = 0,
-    include: str = "",
-    indicators: str = "ma,macd,rsi",
+    keyword: str = "",
+    aspects: str = "overview",
+    days: int = 60,
+    period: str = "d",
     limit: int = 10,
 ) -> dict:
-    """Query one A-share stock or search the universe by keyword (China listed equities only).
+    """Query any A-share security: individual stock, index, or ETF. Supports multi-stock comparison.
 
-    Use when: you need a single stock's quote, a trading day's OHLC, history, technicals, or
-    fundamentals. Use keyword= for discovery; use symbol= (e.g. 600519) for a known code.
+    MODES:
+    - Single stock: finance_stock(symbol="000001") — default returns overview
+    - Deep dive: finance_stock(symbol="000001", aspects="quote,technical,financial")
+    - Index: finance_stock(symbol="000001.SH", aspects="kline,technical")
+    - ETF: finance_stock(symbol="510300", aspects="quote")
+    - Compare: finance_stock(symbol="000001,601398", aspects="quote")
+    - Search: finance_stock(keyword="平安")
 
-    Do not use for: multi-stock screens or top/bottom rankings (use finance_stock_screen);
-    whole-market indices, sectors, or macro (use finance_market); funds (use finance_fund).
-
-    Parameters: keyword — name/code fragment; symbol — ticker; date — YYYY-MM-DD; days — lookback
-    trading days when >0; include — e.g. technicals, fundamental; indicators — comma list when
-    technicals requested; limit — max matches for keyword search. Requires keyword or symbol."""
-    params: dict = {}
+    ASPECTS (comma-separated):
+    - overview: quick snapshot (quote + profile brief + financial brief)
+    - profile: full company info, concepts, indices, capital structure
+    - quote: realtime price, PE/PB, bid/ask 5-level, limit up/down distance
+    - kline: K-line data (period: 5/15/30/60/d/w/m, front-adjusted)
+    - technical: MACD/MA/BOLL/KDJ + market indicators + signal facts (e.g. "DIF上穿DEA")
+    - financial: full financials — 3 statements, quarterly P&L, dividends, forecasts, industry comparison
+    - flow: capital flow (4-tier: mega/large/medium/small orders), consecutive inflow/outflow days
+    - holders: top10 shareholders, float holders, count trend, fund holdings
+    - management: executives, board directors, supervisors
+    - events: dividends, share issuance, lock-up expiry, earnings forecasts
+    - tick: intraday tick data with buy/sell direction stats
+    - summary: aggregated facts from quote+technical+financial+flow+holders (no opinions)
+    - peers: same-industry comparison table with ranking"""
     if keyword:
-        params["keyword"] = keyword
-        params["limit"] = limit
+        return await _call("/v1/finance/stock", {"keyword": keyword, "limit": limit})
+    params: dict = {"aspects": aspects, "days": days, "period": period, "limit": limit}
     if symbol:
         params["symbol"] = symbol
-    if date:
-        params["date"] = date
-    if days > 0:
-        params["days"] = days
-    if include:
-        params["include"] = include
-        params["indicators"] = indicators
     return await _call("/v1/finance/stock", params)
 
 
 @mcp.tool()
-async def finance_stock_screen(
+async def finance_market(
+    scope: str = "overview",
+    sector: str = "",
+    date: str = "",
+    limit: int = 20,
+) -> dict:
+    """Get market-wide data: indices, hot stocks, sectors, IPO calendar, anomaly signals.
+
+    SCOPES (comma-separated):
+    - overview: major indices (SSE/SZSE/ChiNext/STAR50/BSE50) + sentiment (limit-up count, seal rate, max streak)
+    - hot: limit-up/down/strong/failed-limit/sub-new stock pools with streak tier breakdown
+    - sectors: concept & industry lists; add sector="AI" to drill into constituents
+    - ipo: upcoming IPO calendar
+    - signals: market-wide anomaly facts (multi-streak stocks, high-gain stocks)
+
+    Examples:
+    - "今天大盘" → finance_market()
+    - "涨停股" → finance_market(scope="hot")
+    - "AI概念成分股" → finance_market(scope="sectors", sector="AI")
+    - "新股日历" → finance_market(scope="ipo")"""
+    params: dict = {"scope": scope, "limit": limit}
+    if sector:
+        params["sector"] = sector
+    if date:
+        params["date"] = date
+    return await _call("/v1/finance/market", params)
+
+
+@mcp.tool()
+async def finance_screen(
     industry: str = "",
+    concept: str = "",
     pe_max: float = 0,
     pe_min: float = 0,
     pb_max: float = 0,
     min_market_cap: float = 0,
     max_market_cap: float = 0,
     min_dividend_yield: float = 0,
+    filter_preset: str = "",
     sort_by: str = "change_pct",
     order: str = "desc",
     limit: int = 20,
 ) -> dict:
-    """Screen many A-share stocks by filters, or return ranked lists (e.g. movers).
+    """Screen stocks by valuation, size, yield, industry, or concept.
 
-    Use when: you need a list of tickers matching valuation/size/yield constraints, or a
-    leaderboard sorted by change_pct or similar. All filters are optional; omit filters for a
-    default ranking.
+    All filters are optional. Omit all for a default ranking by change_pct.
 
-    Do not use for: deep data on one ticker (use finance_stock); market-wide dashboard (use
-    finance_market).
+    FILTER PRESETS (shortcut parameter combinations):
+    - low_pe_high_div: PE<15 and dividend yield>3%
+    - small_cap_growth: market cap<10B
+    - large_cap_stable: market cap>50B and PE<20
 
-    Parameters: industry — sector name; pe_max/pe_min/pb_max — valuation bounds; min/max_market_cap;
-    min_dividend_yield; sort_by — ranking field; order — asc|desc; limit — max rows."""
+    Examples:
+    - "低估值银行股" → finance_screen(industry="银行", pe_max=10)
+    - "高分红" → finance_screen(min_dividend_yield=3, sort_by="dividend_yield")
+    - "AI概念" → finance_screen(concept="AI")"""
     params: dict = {"sort_by": sort_by, "order": order, "limit": limit}
     if industry:
         params["industry"] = industry
+    if concept:
+        params["concept"] = concept
     if pe_max > 0:
         params["pe_max"] = pe_max
     if pe_min > 0:
@@ -123,58 +171,32 @@ async def finance_stock_screen(
         params["max_market_cap"] = max_market_cap
     if min_dividend_yield > 0:
         params["min_dividend_yield"] = min_dividend_yield
+    if filter_preset:
+        params["filter_preset"] = filter_preset
     return await _call("/v1/finance/stock/screen", params)
 
 
 @mcp.tool()
-async def finance_market(
-    date: str = "",
-    include: str = "",
-    sector: str = "",
-    type: str = "industry",
-    sort_by: str = "change_pct",
-    limit: int = 20,
-) -> dict:
-    """Get market data. Supports multiple modes:
-    - Market overview: finance_market() — indices, breadth, volume, top sectors, macro
-    - With sectors: finance_market(include="sectors") — add sector ranking
-    - With funds: finance_market(include="funds") — add fund ranking
-    - With valuation: finance_market(include="valuation") — add industry valuation map
-    - With macro: finance_market(include="macro") — add macro indicators
-    - All extras: finance_market(include="sectors,funds,valuation,macro")
-    - Sector detail: finance_market(sector="半导体") — specific sector with constituents"""
-    params: dict = {"type": type, "sort_by": sort_by, "limit": limit}
-    if date:
-        params["date"] = date
-    if include:
-        params["include"] = include
-    if sector:
-        params["sector"] = sector
-    return await _call("/v1/finance/market", params)
-
-
-@mcp.tool()
-async def finance_fund(
+async def finance_search(
     keyword: str = "",
-    code: str = "",
-    fund_type: str = "",
-    sort_by: str = "perf_ytd",
-    order: str = "desc",
+    type: str = "all",
     limit: int = 20,
 ) -> dict:
-    """Query fund data: search, detail, or ranking.
-    - Search: finance_fund(keyword="沪深300")
-    - Detail: finance_fund(code="110011")
-    - Ranking: finance_fund(sort_by="return_1y", limit=20)"""
-    params: dict = {"sort_by": sort_by, "order": order, "limit": limit}
-    if keyword:
-        params["keyword"] = keyword
-    if code:
-        params["code"] = code
-    if fund_type:
-        params["fund_type"] = fund_type
-    return await _call("/v1/finance/fund", params)
+    """Search across 11,780+ securities: stocks, concepts, sectors, ETFs, indices.
 
+    TYPE options:
+    - stock: A-shares + Beijing Exchange + STAR Market (6,104 items)
+    - concept: concept indices (2,222 items)
+    - sector: industry/concept tree nodes (1,466 items)
+    - etf: ETF funds (1,377 items)
+    - index: major indices (613 items)
+    - all: search all types at once
+
+    Examples:
+    - "芯片ETF" → finance_search(keyword="芯片", type="etf")
+    - "AI概念" → finance_search(keyword="AI", type="concept")
+    - "沪深300" → finance_search(keyword="沪深300", type="index")"""
+    return await _call("/v1/finance/search", {"keyword": keyword, "type": type, "limit": limit})
 
 
 # ---------------------------------------------------------------------------

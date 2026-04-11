@@ -1,6 +1,6 @@
 ---
 name: groundapi-stock-screener
-description: Smart A-share stock screener — translate natural language investment preferences into filters and return ranked candidates with details. Powered by GroundAPI MCP tools.
+description: Screen A-share stocks by PE, PB, market cap, dividend yield, industry, concept — with preset filters and deep-dive into results — powered by GroundAPI MCP tools.
 metadata:
   openclaw:
     requires:
@@ -10,17 +10,15 @@ metadata:
     primaryEnv: "GROUNDAPI_KEY"
 ---
 
-# 智能选股助手
+# A 股选股助手
 
-当用户表达选股需求或类似以下表达时自动触发：
-- "帮我找低估值的消费股"、"有哪些高分红的银行股"
-- "筛选一下 PE 低于 20 的股票"、"小盘成长股有哪些"
-- "今天涨幅最大的是什么"、"跌幅榜前十"
-- "哪些股票股息率超过 5%"
+当用户要求选股、筛选、或类似以下表达时自动触发：
+- "帮我找几只低估值的股票"、"高分红的有哪些"
+- "PE 低于 10 的银行股"
+- "市值 100 亿以下的科技股"
+- "AI 概念里哪些股票不错"
 
 ## 前置条件
-
-本 Skill 依赖 GroundAPI MCP Server 提供的工具。确保已配置 GroundAPI MCP 连接：
 
 ```json
 {
@@ -35,74 +33,65 @@ metadata:
 
 ## 执行流程
 
-### Step 1 — 理解用户意图并映射参数
+### Step 1 — 理解用户需求，映射为筛选参数
 
-将用户自然语言偏好转化为 `finance_stock_screen()` 的参数：
+| 用户说 | 映射为 |
+|-------|-------|
+| "低估值" | `pe_max=15` |
+| "高分红" | `min_dividend_yield=3, sort_by="dividend_yield"` |
+| "银行股" | `industry="银行"` |
+| "AI概念" | `concept="AI"` |
+| "小盘股" | `max_market_cap=10000000000` |
+| "大盘蓝筹" | `min_market_cap=50000000000, pe_max=20` |
 
-| 用户表达 | 参数映射 |
-|----------|----------|
-| "低估值" | `pe_max=15, pb_max=1.5` |
-| "高估值成长" | `pe_min=30` |
-| "高分红" / "高股息" | `min_dividend_yield=3, sort_by="dividend_yield"` |
-| "大盘股" | `min_market_cap=50000000000`（500 亿） |
-| "中盘股" | `min_market_cap=10000000000, max_market_cap=50000000000` |
-| "小盘股" | `max_market_cap=10000000000`（100 亿） |
-| "今天涨最多" | `sort_by="change_pct", order="desc"` |
-| "今天跌最多" | `sort_by="change_pct", order="asc"` |
-| 行业关键词（"半导体"、"白酒"、"银行"） | `industry="半导体"` |
-
-如果用户给了模糊描述（如"稳健的股票"），合理推断为：低 PE + 高分红 + 大市值，并告诉用户你的推断逻辑。
+也可以用**预置组合**快速筛选：
+- `filter_preset="low_pe_high_div"` → PE<15 且 股息率>3%
+- `filter_preset="small_cap_growth"` → 市值<100亿
+- `filter_preset="large_cap_stable"` → 市值>500亿 且 PE<20
 
 ### Step 2 — 执行筛选
 
-调用 `finance_stock_screen(...)` 获取符合条件的股票列表，默认返回 20 只。
+`finance_screen(industry="银行", pe_max=10, sort_by="pe", order="asc", limit=20)`
 
-### Step 3 — 补充 Top 候选详情
+### Step 3 — 对优选结果深度挖掘
 
-对排名前 5 的股票，逐一调用：
-`finance_stock(symbol="...", include="fundamental")` 获取详细基本面数据。
+从筛选结果中取 Top 3-5 只，调用 summary 获取多维度数据：
+`finance_stock(symbol="601398,601939,600036", aspects="overview")`
 
-### Step 4 — 结构化输出
+或逐个深度分析：
+`finance_stock(symbol="601398", aspects="summary")`
+
+### Step 4 — 输出选股报告
 
 ```
-## 🔍 选股结果 — {筛选条件摘要}
+## 选股结果 — {筛选条件描述}
 
 ### 筛选条件
-- 行业：XXX
-- PE：< XX
-- 市值：> XXX 亿
-- 排序：按 XXX 降序
+- 行业：银行
+- PE 上限：10
+- 排序：PE 从低到高
 
-### 筛选结果（共 X 只）
+### 结果（共XX只）
+| 排名 | 代码 | 名称 | PE | PB | 股息率 | 市值(亿) | 今日涨跌 |
+|------|------|------|-----|-----|--------|---------|---------|
+| 1 | 601398 | 工商银行 | 5.2 | 0.5 | 6.1% | 18000 | +0.3% |
+| 2 | ... | ... | ... | ... | ... | ... | ... |
 
-| # | 股票 | 代码 | 最新价 | 涨跌幅 | PE | PB | 股息率 | 市值(亿) |
-|---|------|------|--------|--------|-----|-----|--------|----------|
-| 1 | XXX | XXXXXX | ¥XX.XX | +X.X% | XX.X | X.X | X.X% | XXX |
-| ... |
+### Top 3 快速概览
 
-### Top 5 详细点评
+**1. 工商银行（601398）**
+- 主力资金：近5日净流入XX亿
+- 技术面：均线多头排列，MACD金叉
+- 股东：户数连续3期减少（筹码集中）
 
-**1. XXX（XXXXXX）**
-- 估值：PE XX.X（行业均值 XX.X），PB X.X
-- 亮点：一句话概述
-- 风险：一句话概述
+**2. ...**
 
-（重复 5 只）
-
-⚠️ 以上筛选基于公开数据，仅供参考，不构成投资建议。
+以上数据基于公开信息，不构成投资建议。
 ```
-
-## 追问交互
-
-如果用户对结果不满意，支持追问调整：
-- "PE 再低一点" → 收紧 pe_max
-- "换个行业看看" → 修改 industry
-- "按市值排序" → 修改 sort_by
-- "详细看看第三个" → 对该股票触发个股分析流程
 
 ## 注意事项
 
-- 仅支持 A 股（沪深两市）
-- 筛选条件过于严格导致无结果时，建议用户放宽条件并说明哪个条件最受限
-- 始终附加免责声明
+- `finance_screen` 依赖数据库快照数据，非实时交易数据
+- 筛选条件可自由组合，所有参数均可选
+- PE 为负的股票默认被过滤（亏损企业）
 - 输出语言跟随用户
