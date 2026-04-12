@@ -1,9 +1,9 @@
 """
-GroundAPI MCP Server — tools for AI Agents.
+GroundAPI MCP Server — 18 tools for AI Agents.
 
-Finance: 4 tools covering all A-share data (69 BiyingAPI endpoints).
-Info: 3 tools (search, scrape, news).
-Life: 3 tools (weather, logistics, IP).
+Finance: 6 tools (stock, market, screen, search, exchange rate, gold price).
+Info: 5 tools (search, scrape, news, trending, bulletin).
+Life: 7 tools (weather, logistics, IP, tax, calendar, oil price, traffic).
 
 Requires Bearer-token authentication: the client must supply its own
 GroundAPI API Key via ``Authorization: Bearer sk_gapi_...``.
@@ -37,7 +37,9 @@ mcp = FastMCP(
         "Finance: A-share stock/index/ETF data (13 aspects), market overview (5 scopes), "
         "multi-dimensional screening, universal search across 11,780 securities. "
         "Info: web search, news, webpage scraping. "
-        "Life: weather, logistics tracking, IP geolocation. "
+        "Life: weather, logistics tracking, IP geolocation, tax calculator, "
+        "calendar (lunar/solar terms/holidays/trading days), trending topics, "
+        "daily bulletin, oil price, traffic restrictions, exchange rates, gold price. "
         "Requires authentication: pass your GroundAPI API Key as a Bearer token."
     ),
 )
@@ -258,6 +260,92 @@ async def life_ip(address: str = "") -> dict:
     if address:
         params["address"] = address
     return await _call("/v1/life/ip", params)
+
+
+# ---------------------------------------------------------------------------
+# Life — additional tools (tax, calendar, oil price, traffic)
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+async def life_tax(
+    monthly_salary: float = 0,
+    bonus: float = 0,
+    insurance: float = 0,
+    special_deduction: float = 0,
+    additional_deduction: float = 0,
+) -> dict:
+    """Calculate Chinese individual income tax (个人所得税).
+    monthly_salary: pre-tax monthly salary. bonus: annual bonus.
+    insurance: monthly social insurance deduction. special_deduction: special additional deductions.
+    additional_deduction: other deductions."""
+    return await _call("/v1/life/tax", {
+        "monthly_salary": monthly_salary, "bonus": bonus,
+        "insurance": insurance, "special_deduction": special_deduction,
+        "additional_deduction": additional_deduction,
+    })
+
+
+@mcp.tool()
+async def life_calendar(date: str = "") -> dict:
+    """Get calendar info: lunar date, solar terms, holidays, trading day status.
+    date: YYYY-MM-DD (defaults to today). Returns lunar date, nearest solar terms,
+    whether it's a holiday/workday/trading day, and next trading day if market is closed."""
+    params: dict = {}
+    if date:
+        params["date"] = date
+    return await _call("/v1/life/calendar", params)
+
+
+@mcp.tool()
+async def life_oil_price(province: str = "") -> dict:
+    """Get real-time fuel prices (92/95/98/diesel) in China.
+    province: province name (e.g. '北京'). Omit for national prices."""
+    params: dict = {}
+    if province:
+        params["province"] = province
+    return await _call("/v1/life/oil-price", params)
+
+
+@mcp.tool()
+async def life_traffic(city: str = "") -> dict:
+    """Get vehicle traffic restrictions (限行尾号) for a Chinese city.
+    city: city name (e.g. '北京'). Required."""
+    if not city:
+        return {"success": False, "error": {"code": "INVALID_PARAMS", "message": "city is required"}}
+    return await _call("/v1/life/traffic", {"city": city})
+
+
+# ---------------------------------------------------------------------------
+# Finance — data tools
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+async def finance_exchange_rate(from_currency: str = "USD", to_currency: str = "CNY") -> dict:
+    """Get currency exchange rate.
+    from_currency: source currency code (e.g. USD, EUR, JPY). to_currency: target currency code (e.g. CNY)."""
+    return await _call("/v1/finance/exchange-rate", {"from": from_currency, "to": to_currency})
+
+
+@mcp.tool()
+async def finance_gold_price() -> dict:
+    """Get real-time gold and precious metal prices (黄金/白银/铂金)."""
+    return await _call("/v1/finance/gold-price")
+
+
+# ---------------------------------------------------------------------------
+# Info — extra tools
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+async def info_trending() -> dict:
+    """Get trending topics / hot search rankings from major Chinese platforms (微博/抖音/知乎 etc)."""
+    return await _call("/v1/info/trending")
+
+
+@mcp.tool()
+async def info_bulletin() -> dict:
+    """Get daily news bulletin / morning briefing (每日简报)."""
+    return await _call("/v1/info/bulletin")
 
 
 def _init_telemetry() -> None:
