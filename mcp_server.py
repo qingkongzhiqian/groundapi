@@ -46,8 +46,8 @@ mcp = FastMCP(
 
 
 async def _call(path: str, params: dict | None = None) -> dict:
-    token: str = get_access_token()
-    headers = {"Content-Type": "application/json", "X-API-Key": token}
+    token = get_access_token()
+    headers = {"Content-Type": "application/json", "X-API-Key": token.token}
     transport = httpx.AsyncHTTPTransport(proxy=None)
     async with httpx.AsyncClient(base_url=API_BASE, timeout=60, transport=transport) as client:
         resp = await client.get(path, params=params or {}, headers=headers)
