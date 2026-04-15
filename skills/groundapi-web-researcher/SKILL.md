@@ -1,6 +1,6 @@
 ---
 name: groundapi-web-researcher
-description: Deep web research assistant — search, scrape, and synthesize information from multiple sources into a structured report. Powered by GroundAPI MCP tools.
+description: Deep web research assistant — search, scrape, check trending topics, get daily briefings, and synthesize information from multiple sources into a structured report. Powered by GroundAPI MCP tools.
 metadata:
   openclaw:
     requires:
@@ -17,6 +17,7 @@ metadata:
 - "XXX 的最新进展是什么"、"帮我了解一下 XXX"
 - "对比一下 A 和 B"、"总结一下这个话题"
 - "帮我搜一下..."、"研究一下..."
+- "现在什么最火"、"今天有什么热点"
 
 ## 前置条件
 
@@ -26,8 +27,10 @@ metadata:
 {
   "mcpServers": {
     "groundapi": {
-      "url": "https://mcp.groundapi.net/sse",
-      "env": { "GROUNDAPI_KEY": "sk_live_xxxxx" }
+      "url": "https://mcp.groundapi.net/mcp",
+      "headers": {
+        "X-API-Key": "sk_gapi_xxxxx"
+      }
     }
   }
 }
@@ -44,11 +47,18 @@ metadata:
 - 查询 2：`固态电池 产业链 公司 量产`（产业角度）
 - 查询 3：`固态电池 市场规模 预测`（市场角度）
 
+### Step 1.5 — 热度预判（可选）
+
+调用 `info_trending()` 查看该话题是否在全网热搜中，了解当前舆论热度。
+调用 `info_bulletin()` 获取每日新闻简报，看该话题是否在今日重点事件中。
+
+如果话题正在热搜，优先使用 `recency="oneDay"` 获取最新信息。
+
 ### Step 2 — 搜索
 
 对每个查询调用 `info_search(query="...", count=10, recency="oneMonth")`。
 
-如果话题有时效性，使用更短的 recency（`oneWeek` 或 `oneDay`）。
+如果话题有时效性或正在热搜中，使用更短的 recency（`oneWeek` 或 `oneDay`）。
 
 ### Step 3 — 筛选与抓取
 

@@ -23,8 +23,10 @@ metadata:
 {
   "mcpServers": {
     "groundapi": {
-      "url": "https://mcp.groundapi.net/sse",
-      "env": { "GROUNDAPI_KEY": "sk_live_xxxxx" }
+      "url": "https://mcp.groundapi.net/mcp",
+      "headers": {
+        "X-API-Key": "sk_gapi_xxxxx"
+      }
     }
   }
 }

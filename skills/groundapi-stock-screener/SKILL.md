@@ -1,6 +1,6 @@
 ---
 name: groundapi-stock-screener
-description: Screen A-share stocks by PE, PB, market cap, dividend yield, industry, concept — with preset filters and deep-dive into results — powered by GroundAPI MCP tools.
+description: Screen A-share stocks by PE, PB, market cap, dividend yield, industry, concept — with preset filters, macro context (gold/forex), and deep-dive into results — powered by GroundAPI MCP tools.
 metadata:
   openclaw:
     requires:
@@ -24,8 +24,10 @@ metadata:
 {
   "mcpServers": {
     "groundapi": {
-      "url": "https://mcp.groundapi.net/sse",
-      "env": { "GROUNDAPI_KEY": "sk_live_xxxxx" }
+      "url": "https://mcp.groundapi.net/mcp",
+      "headers": {
+        "X-API-Key": "sk_gapi_xxxxx"
+      }
     }
   }
 }
@@ -53,7 +55,14 @@ metadata:
 
 `finance_screen(industry="银行", pe_max=10, sort_by="pe", order="asc", limit=20)`
 
-### Step 3 — 对优选结果深度挖掘
+### Step 3 — 宏观环境参考
+
+并行获取宏观数据，为选股提供大环境背景：
+- `life_calendar()` → 确认是否交易日
+- `finance_gold_price()` → 金价走势（避险情绪参考）
+- `finance_exchange_rate(from_currency="USD", to_currency="CNY")` → 汇率（外贸/外资敏感行业参考）
+
+### Step 4 — 对优选结果深度挖掘
 
 从筛选结果中取 Top 3-5 只，调用 summary 获取多维度数据：
 `finance_stock(symbol="601398,601939,600036", aspects="overview")`
@@ -61,10 +70,14 @@ metadata:
 或逐个深度分析：
 `finance_stock(symbol="601398", aspects="summary")`
 
-### Step 4 — 输出选股报告
+### Step 5 — 输出选股报告
 
 ```
 ## 选股结果 — {筛选条件描述}
+
+### 宏观环境
+- 日期：{YYYY-MM-DD}（{交易日/非交易日}）
+- 黄金：¥XXX/克 | 美元兑人民币：X.XXXX
 
 ### 筛选条件
 - 行业：银行

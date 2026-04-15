@@ -1,6 +1,6 @@
 ---
 name: groundapi-a-share-analyst
-description: Analyze A-share stocks with 13 data dimensions — realtime quotes, financials, technicals, capital flow, shareholders, management, events, peer comparison — powered by GroundAPI MCP tools.
+description: Analyze A-share stocks with 13 data dimensions, macro context (gold/forex), trending sentiment, and calendar awareness — realtime quotes, financials, technicals, capital flow, shareholders, management, events, peer comparison — powered by GroundAPI MCP tools.
 metadata:
   openclaw:
     requires:
@@ -27,8 +27,10 @@ metadata:
 {
   "mcpServers": {
     "groundapi": {
-      "url": "https://mcp.groundapi.net/sse",
-      "env": { "GROUNDAPI_KEY": "sk_live_xxxxx" }
+      "url": "https://mcp.groundapi.net/mcp",
+      "headers": {
+        "X-API-Key": "sk_gapi_xxxxx"
+      }
     }
   }
 }
@@ -67,8 +69,14 @@ metadata:
 `finance_stock(symbol="000001.SH", aspects="kline,technical")` — 上证指数
 `finance_stock(symbol="510300", aspects="quote")` — 沪深300ETF
 
-同时搜索近期新闻：
-`info_search(query="600519 贵州茅台 最新消息", count=5, recency="oneWeek")`
+同时获取辅助信息（并行调用）：
+- `info_search(query="600519 贵州茅台 最新消息", count=5, recency="oneWeek")` → 近期新闻
+- `info_trending()` → 查看该股是否上了全网热搜（舆情参考）
+- `life_calendar()` → 确认是否交易日，如非交易日需说明数据时效
+
+**深度分析时补充宏观环境**：
+- `finance_exchange_rate(from_currency="USD", to_currency="CNY")` → 汇率（外贸/外资敏感行业参考）
+- `finance_gold_price()` → 金价（贵金属/避险板块参考）
 
 ### Step 3 — 可用的 13 个 aspects
 
@@ -129,6 +137,14 @@ metadata:
 ### 近期事件
 - 分红：XXXX-XX-XX 每10股派X元
 - 解禁：XXXX-XX-XX 解禁XX万股
+
+### 宏观环境（深度分析时展示）
+- 美元兑人民币：X.XXXX（对外贸/外资敏感行业的影响判断）
+- 黄金价格：¥XXX/克（市场避险情绪参考）
+
+### 舆情热度
+- 是否出现在全网热搜：是/否
+- 近期新闻摘要：（列出 2-3 条关键新闻）
 
 ### 综合评价
 （基于以上客观数据进行分析判断）
