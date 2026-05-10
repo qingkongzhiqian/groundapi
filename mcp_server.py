@@ -1,9 +1,9 @@
 """
-GroundAPI MCP Server — 18 tools for AI Agents.
+GroundAPI MCP Server — 11 tools for AI Agents.
 
-Finance: 6 tools (stock, market, screen, search, exchange rate, gold price).
-Info: 5 tools (search, scrape, news, trending, bulletin).
-Life: 7 tools (weather, logistics, IP, tax, calendar, oil price, traffic).
+Finance: 5 tools (stock, market, screen, search, gold price).
+Info: 4 tools (search, news, trending, bulletin).
+Life: 2 tools (weather, calendar).
 
 Requires Bearer-token authentication: the client must supply its own
 GroundAPI API Key via ``Authorization: Bearer sk_gapi_...``.
@@ -35,11 +35,9 @@ mcp = FastMCP(
     instructions=(
         "One-stop data layer for AI Agents. "
         "Finance: A-share stock/index/ETF data (13 aspects), market overview (5 scopes), "
-        "multi-dimensional screening, universal search across 11,780 securities. "
-        "Info: web search, news, webpage scraping. "
-        "Life: weather, logistics tracking, IP geolocation, tax calculator, "
-        "calendar (lunar/solar terms/holidays/trading days), trending topics, "
-        "daily bulletin, oil price, traffic restrictions, exchange rates, gold price. "
+        "multi-dimensional screening, universal search across 11,780 securities, gold price. "
+        "Info: web search, news, trending topics, daily bulletin. "
+        "Life: weather, calendar (lunar/solar terms/holidays/trading days). "
         "Requires authentication: pass your GroundAPI API Key as a Bearer token."
     ),
 )
@@ -80,16 +78,14 @@ async def finance_stock(
     ASPECTS (comma-separated):
     - overview: quick snapshot (quote + profile brief + financial brief)
     - profile: full company info, concepts, indices, capital structure
-    - quote: realtime price, PE/PB, bid/ask 5-level, limit up/down distance
-    - kline: K-line data (period: 5/15/30/60/d/w/m, front-adjusted)
-    - technical: MACD/MA/BOLL/KDJ + market indicators + signal facts (e.g. "DIF上穿DEA")
+    - quote: latest closing price, PE/PB, market cap, turnover, limit up/down
+    - kline: K-line data (period: d/w/m, front-adjusted, based on daily data)
+    - technical: MACD/MA/BOLL/KDJ + signal facts (e.g. "DIF上穿DEA"), computed locally
     - financial: full financials — 3 statements, quarterly P&L, dividends, forecasts, industry comparison
-    - flow: capital flow (4-tier: mega/large/medium/small orders), consecutive inflow/outflow days
     - holders: top10 shareholders, float holders, count trend, fund holdings
     - management: executives, board directors, supervisors
     - events: dividends, share issuance, lock-up expiry, earnings forecasts
-    - tick: intraday tick data with buy/sell direction stats
-    - summary: aggregated facts from quote+technical+financial+flow+holders (no opinions)
+    - summary: aggregated facts from quote+technical+financial+holders (no opinions)
     - peers: same-industry comparison table with ranking"""
     if keyword:
         return await _call("/v1/finance/stock", {"keyword": keyword, "limit": limit})
@@ -202,7 +198,7 @@ async def finance_search(
 
 
 # ---------------------------------------------------------------------------
-# Info (3 tools)
+# Info (2 tools)
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
@@ -213,13 +209,6 @@ async def info_search(query: str, count: int = 10, recency: str = "noLimit") -> 
 
 
 @mcp.tool()
-async def info_scrape(url: str) -> dict:
-    """Read a webpage and return its content as markdown.
-    url: the webpage URL to scrape."""
-    return await _call("/v1/info/scrape", {"url": url})
-
-
-@mcp.tool()
 async def info_news(category: str = "finance", limit: int = 20) -> dict:
     """Get latest news headlines.
     category: finance/general/tech/sports/... (default: finance). limit: number of articles (1-50)."""
@@ -227,7 +216,7 @@ async def info_news(category: str = "finance", limit: int = 20) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Life (3 tools)
+# Life (2 tools)
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
@@ -243,49 +232,6 @@ async def life_weather(city: str = "", location: str = "", forecast: bool = Fals
 
 
 @mcp.tool()
-async def life_logistics(number: str, company: str = "") -> dict:
-    """Track a courier package.
-    number: tracking number. company: courier company code (auto-detected if omitted)."""
-    params: dict = {"number": number}
-    if company:
-        params["company"] = company
-    return await _call("/v1/life/logistics", params)
-
-
-@mcp.tool()
-async def life_ip(address: str = "") -> dict:
-    """Get IP geolocation info.
-    address: IP address (defaults to caller IP if omitted)."""
-    params: dict = {}
-    if address:
-        params["address"] = address
-    return await _call("/v1/life/ip", params)
-
-
-# ---------------------------------------------------------------------------
-# Life — additional tools (tax, calendar, oil price, traffic)
-# ---------------------------------------------------------------------------
-
-@mcp.tool()
-async def life_tax(
-    monthly_salary: float = 0,
-    bonus: float = 0,
-    insurance: float = 0,
-    special_deduction: float = 0,
-    additional_deduction: float = 0,
-) -> dict:
-    """Calculate Chinese individual income tax (个人所得税).
-    monthly_salary: pre-tax monthly salary. bonus: annual bonus.
-    insurance: monthly social insurance deduction. special_deduction: special additional deductions.
-    additional_deduction: other deductions."""
-    return await _call("/v1/life/tax", {
-        "monthly_salary": monthly_salary, "bonus": bonus,
-        "insurance": insurance, "special_deduction": special_deduction,
-        "additional_deduction": additional_deduction,
-    })
-
-
-@mcp.tool()
 async def life_calendar(date: str = "") -> dict:
     """Get calendar info: lunar date, solar terms, holidays, trading day status.
     date: YYYY-MM-DD (defaults to today). Returns lunar date, nearest solar terms,
@@ -296,35 +242,9 @@ async def life_calendar(date: str = "") -> dict:
     return await _call("/v1/life/calendar", params)
 
 
-@mcp.tool()
-async def life_oil_price(province: str = "") -> dict:
-    """Get real-time fuel prices (92/95/98/diesel) in China.
-    province: province name (e.g. '北京'). Omit for national prices."""
-    params: dict = {}
-    if province:
-        params["province"] = province
-    return await _call("/v1/life/oil-price", params)
-
-
-@mcp.tool()
-async def life_traffic(city: str = "") -> dict:
-    """Get vehicle traffic restrictions (限行尾号) for a Chinese city.
-    city: city name (e.g. '北京'). Required."""
-    if not city:
-        return {"success": False, "error": {"code": "INVALID_PARAMS", "message": "city is required"}}
-    return await _call("/v1/life/traffic", {"city": city})
-
-
 # ---------------------------------------------------------------------------
-# Finance — data tools
+# Finance — gold price
 # ---------------------------------------------------------------------------
-
-@mcp.tool()
-async def finance_exchange_rate(from_currency: str = "USD", to_currency: str = "CNY") -> dict:
-    """Get currency exchange rate.
-    from_currency: source currency code (e.g. USD, EUR, JPY). to_currency: target currency code (e.g. CNY)."""
-    return await _call("/v1/finance/exchange-rate", {"from": from_currency, "to": to_currency})
-
 
 @mcp.tool()
 async def finance_gold_price() -> dict:
