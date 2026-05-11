@@ -34,7 +34,7 @@ mcp = FastMCP(
     auth=auth,
     instructions=(
         "One-stop data layer for AI Agents. "
-        "Finance: A-share stock/index/ETF data (13 aspects), market overview (5 scopes), "
+        "Finance: A-share stock/index/ETF data (11 aspects), market overview (5 scopes), "
         "multi-dimensional screening, universal search across 11,780 securities, gold price. "
         "Info: web search, news, trending topics, daily bulletin. "
         "Life: weather, calendar (lunar/solar terms/holidays/trading days). "
@@ -53,7 +53,7 @@ async def _call(path: str, params: dict | None = None) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Finance (4 tools)
+# Finance (5 tools)
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
@@ -65,28 +65,36 @@ async def finance_stock(
     period: str = "d",
     limit: int = 10,
 ) -> dict:
-    """Query any A-share security: individual stock, index, or ETF. Supports multi-stock comparison.
+    """Query A-share securities (stocks/indices/ETFs). One stop for everything about a security.
 
-    MODES:
-    - Single stock: finance_stock(symbol="000001") — default returns overview
-    - Deep dive: finance_stock(symbol="000001", aspects="quote,technical,financial")
-    - Index: finance_stock(symbol="000001.SH", aspects="kline,technical")
-    - ETF: finance_stock(symbol="510300", aspects="quote")
-    - Compare: finance_stock(symbol="000001,601398", aspects="quote")
-    - Search: finance_stock(keyword="平安")
+    PICK ASPECTS BY USER INTENT (most → least common):
+    - "How is XXX doing?" / quick look           → aspects="overview"  (DEFAULT, recommended)
+    - "Show me the price / PE"                    → aspects="quote"
+    - "Show me the K-line / chart / trend"        → aspects="quote,kline"
+    - "Technical analysis / MACD / signals"       → aspects="quote,kline,technical"
+    - "Earnings / financials / fundamentals"      → aspects="financial"
+    - "Top shareholders / institutional holdings" → aspects="holders"
+    - "Management team / executives"              → aspects="management"
+    - "Dividends / unlocks / earnings forecast"   → aspects="events"
+    - "Compare to peers / industry ranking"       → aspects="peers"
+    - "Comprehensive analysis"                    → aspects="summary"  (combines quote+technical+financial+holders)
 
-    ASPECTS (comma-separated):
-    - overview: quick snapshot (quote + profile brief + financial brief)
-    - profile: full company info, concepts, indices, capital structure
-    - quote: latest closing price, PE/PB, market cap, turnover, limit up/down
-    - kline: K-line data (period: d/w/m, front-adjusted, based on daily data)
-    - technical: MACD/MA/BOLL/KDJ + signal facts (e.g. "DIF上穿DEA"), computed locally
-    - financial: full financials — 3 statements, quarterly P&L, dividends, forecasts, industry comparison
-    - holders: top10 shareholders, float holders, count trend, fund holdings
-    - management: executives, board directors, supervisors
-    - events: dividends, share issuance, lock-up expiry, earnings forecasts
-    - summary: aggregated facts from quote+technical+financial+holders (no opinions)
-    - peers: same-industry comparison table with ranking"""
+    SYMBOL FORMATS:
+    - Stock:  "600519" or "600519.SH" or "000001.SZ"
+    - Index:  "000001.SH" (上证), "399001.SZ" (深证), "399006.SZ" (创业板)
+    - ETF:    "510300" or "510300.SH"
+    - Multi-compare (up to 10): "600519,000858,601398" — returns side-by-side data
+    - Search by name: keyword="贵州茅台" — returns matching codes (no aspects needed)
+
+    OTHER PARAMS:
+    - days: lookback window for kline/technical (1-500, default 60)
+    - period: "d" daily / "w" weekly / "m" monthly (minute K not supported)
+    - limit: max results when using keyword search (1-50)
+
+    NOTES:
+    - Data updates after market close (~15:35 CST). Not real-time intraday.
+    - Always try aspects="overview" first; only request more aspects when needed.
+    - Combine multiple aspects in ONE call; don't make multiple calls."""
     if keyword:
         return await _call("/v1/finance/stock", {"keyword": keyword, "limit": limit})
     params: dict = {"aspects": aspects, "days": days, "period": period, "limit": limit}
@@ -102,20 +110,30 @@ async def finance_market(
     date: str = "",
     limit: int = 20,
 ) -> dict:
-    """Get market-wide data: indices, hot stocks, sectors, IPO calendar, anomaly signals.
+    """Market-wide A-share data — for "what's happening in the market" questions.
 
-    SCOPES (comma-separated):
-    - overview: major indices (SSE/SZSE/ChiNext/STAR50/BSE50) + sentiment (limit-up count, seal rate, max streak)
-    - hot: limit-up/down/strong/failed-limit/sub-new stock pools with streak tier breakdown
-    - sectors: concept & industry lists; add sector="AI" to drill into constituents
-    - ipo: upcoming IPO calendar
-    - signals: market-wide anomaly facts (multi-streak stocks, high-gain stocks)
+    PICK SCOPE BY USER INTENT:
+    - "How is the market today?" / "大盘怎么样"     → scope="overview"  (DEFAULT)
+    - "Limit-up stocks today" / "今天涨停的"         → scope="hot"
+    - "Strongest stocks" / "最强势的股"              → scope="signals"
+    - "Sector rotation" / "板块涨跌"                 → scope="sectors"
+    - "Constituent stocks of AI" / "AI 概念成分股"   → scope="sectors", sector="AI"
+    - "New IPO calendar" / "新股日历"                → scope="ipo"
 
-    Examples:
-    - "今天大盘" → finance_market()
-    - "涨停股" → finance_market(scope="hot")
-    - "AI概念成分股" → finance_market(scope="sectors", sector="AI")
-    - "新股日历" → finance_market(scope="ipo")"""
+    Combine multiple scopes for daily briefing-style requests:
+    - "Daily market briefing"  → scope="overview,hot,signals"
+
+    SCOPE DETAILS:
+    - overview: 5 major indices (SSE/SZSE/ChiNext/STAR50/BSE50) + sentiment counters
+    - hot: 5 stock pools (limit-up/down/strong/failed-limit/sub-new) with streak tiers
+    - sectors: concept & industry rankings; pass `sector` param to drill into constituents
+    - ipo: upcoming new stock subscriptions calendar
+    - signals: multi-streak limit-ups + high-gain stocks (>15% intraday)
+
+    OTHER PARAMS:
+    - sector: only used with scope="sectors" to drill down (e.g. "AI", "半导体", "光伏")
+    - date: YYYY-MM-DD, defaults to today (use historical date for past pools)
+    - limit: max results per pool (1-100, default 20)"""
     params: dict = {"scope": scope, "limit": limit}
     if sector:
         params["sector"] = sector
@@ -139,19 +157,37 @@ async def finance_screen(
     order: str = "desc",
     limit: int = 20,
 ) -> dict:
-    """Screen stocks by valuation, size, yield, industry, or concept.
+    """Find stocks matching user criteria. ALL params optional — combine 1-3 you need.
 
-    All filters are optional. Omit all for a default ranking by change_pct.
+    COMMON USE CASES (most → least common):
+    - "高分红银行股"        → finance_screen(industry="银行", min_dividend_yield=3)
+    - "白酒龙头"            → finance_screen(industry="食品饮料", sort_by="market_cap", limit=10)
+    - "AI 概念股"           → finance_screen(concept="AI")
+    - "低估值蓝筹"          → finance_screen(filter_preset="large_cap_stable")
+    - "中小盘成长股"        → finance_screen(filter_preset="small_cap_growth")
+    - "高股息低 PE"         → finance_screen(filter_preset="low_pe_high_div")
+    - "今日涨幅榜"          → finance_screen()  (no filters = top by change_pct)
+    - "PE < 15 的股票"      → finance_screen(pe_max=15)
+    - "市值超千亿的股票"    → finance_screen(min_market_cap=100000000000)
 
-    FILTER PRESETS (shortcut parameter combinations):
-    - low_pe_high_div: PE<15 and dividend yield>3%
-    - small_cap_growth: market cap<10B
-    - large_cap_stable: market cap>50B and PE<20
+    PARAMS (units: market_cap in CNY, dividend_yield in %):
+    - industry: free text match (e.g. "银行", "电子", "医药")
+    - concept: free text match (e.g. "AI", "半导体", "新能源")
+    - pe_min / pe_max / pb_max: valuation filters
+    - min_market_cap / max_market_cap: market cap range in CNY
+    - min_dividend_yield: minimum dividend yield in %
+    - filter_preset: shortcut to combine common filters (see below)
+    - sort_by: change_pct/pe/pb/market_cap/turnover_rate/dividend_yield/volume
+    - order: desc / asc
+    - limit: 1-100, default 20
 
-    Examples:
-    - "低估值银行股" → finance_screen(industry="银行", pe_max=10)
-    - "高分红" → finance_screen(min_dividend_yield=3, sort_by="dividend_yield")
-    - "AI概念" → finance_screen(concept="AI")"""
+    FILTER PRESETS:
+    - low_pe_high_div:    PE<15 AND dividend yield>3%   (value/dividend stocks)
+    - small_cap_growth:   market cap<10B                (small-cap growth)
+    - large_cap_stable:   market cap>50B AND PE<20      (blue chip)
+
+    TIP: industry vs concept — industry is GICS-style fixed taxonomy ("银行", "医药"),
+         concept is theme-based ("AI", "国资", "数据要素"). Use whichever fits the query."""
     params: dict = {"sort_by": sort_by, "order": order, "limit": limit}
     if industry:
         params["industry"] = industry
@@ -180,38 +216,78 @@ async def finance_search(
     type: str = "all",
     limit: int = 20,
 ) -> dict:
-    """Search across 11,780+ securities: stocks, concepts, sectors, ETFs, indices.
+    """Find a security by name or partial code. Use this to RESOLVE A NAME TO A CODE
+    before calling finance_stock with that code.
 
-    TYPE options:
-    - stock: A-shares + Beijing Exchange + STAR Market (6,104 items)
-    - concept: concept indices (2,222 items)
-    - sector: industry/concept tree nodes (1,466 items)
-    - etf: ETF funds (1,377 items)
-    - index: major indices (613 items)
-    - all: search all types at once
+    WHEN TO USE THIS:
+    - User says a name not a code → "茅台" → search → get "600519"
+    - User asks "what ETFs cover XXX" → search type="etf"
+    - User asks "what's in XXX concept" → search type="concept"
+    - You're not sure what code to pass to finance_stock
 
-    Examples:
-    - "芯片ETF" → finance_search(keyword="芯片", type="etf")
-    - "AI概念" → finance_search(keyword="AI", type="concept")
-    - "沪深300" → finance_search(keyword="沪深300", type="index")"""
+    TYPE PICKING:
+    - type="all" (DEFAULT): search across all 5 types — fine for ambiguous queries
+    - type="stock": individual stocks (A-share + 北交所 + 科创板, 6,104 items)
+    - type="concept": theme indices ("AI", "数据要素", "光伏", 2,222 items)
+    - type="sector": industry/concept tree nodes (1,466 items)
+    - type="etf": ETF funds (1,377 items)
+    - type="index": broad market indices ("沪深300", "中证500", 613 items)
+
+    EXAMPLES:
+    - "茅台" / "比亚迪"          → finance_search(keyword="茅台")
+    - "芯片 ETF"                 → finance_search(keyword="芯片", type="etf")
+    - "AI 概念有哪些股票"        → finance_search(keyword="AI", type="concept")
+    - "沪深300 / 标普500 指数"   → finance_search(keyword="沪深300", type="index")
+
+    NOTE: this only RESOLVES code/name — to get actual quote data, pass the resolved
+    code to finance_stock(symbol="...")."""
     return await _call("/v1/finance/search", {"keyword": keyword, "type": type, "limit": limit})
 
 
 # ---------------------------------------------------------------------------
-# Info (2 tools)
+# Info (4 tools)
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
 async def info_search(query: str, count: int = 10, recency: str = "noLimit") -> dict:
-    """Search the web. Returns titles, links, and snippets.
-    query: search keywords. count: number of results (1-50). recency: oneDay/oneWeek/oneMonth/oneYear/noLimit."""
+    """Search the web in real time — for finding recent news, articles, research.
+
+    WHEN TO USE:
+    - User asks about a recent event, company news, industry research
+    - You need to look up something not in your training data
+    - Combine with finance_stock to enrich a stock query with latest news
+
+    EXAMPLES:
+    - "最近 AI 行业的新闻"     → info_search(query="AI 行业最新动态", recency="oneWeek")
+    - "茅台最近发生了什么"     → info_search(query="贵州茅台 最新消息", recency="oneMonth")
+
+    PARAMS:
+    - query: search keywords (max 70 chars)
+    - count: number of results (1-50, default 10)
+    - recency: oneDay / oneWeek / oneMonth / oneYear / noLimit (default noLimit)"""
     return await _call("/v1/info/search", {"q": query, "count": count, "recency": recency})
 
 
 @mcp.tool()
 async def info_news(category: str = "finance", limit: int = 20) -> dict:
-    """Get latest news headlines.
-    category: finance/general/tech/sports/... (default: finance). limit: number of articles (1-50)."""
+    """Get curated news headlines by category. Pre-categorized; faster than search.
+
+    WHEN TO USE:
+    - User asks "今天有什么新闻" / "最新财经新闻"
+    - You need a quick news roundup without specifying a topic
+    - For specific company/event news, prefer info_search instead
+
+    CATEGORIES:
+    - finance (DEFAULT) / general / tech / sports / military / entertainment
+    - fashion / travel / education / health / food / auto / game / house
+
+    EXAMPLES:
+    - "今天的财经新闻"       → info_news(category="finance")
+    - "科技新闻"             → info_news(category="tech", limit=10)
+
+    PARAMS:
+    - category: see list above (default: finance)
+    - limit: number of articles (1-50, default 20)"""
     return await _call("/v1/info/news", {"category": category, "limit": limit})
 
 
@@ -221,8 +297,17 @@ async def info_news(category: str = "finance", limit: int = 20) -> dict:
 
 @mcp.tool()
 async def life_weather(city: str = "", location: str = "", forecast: bool = False) -> dict:
-    """Get weather data: current conditions and optional 7-day forecast.
-    city: city name (e.g. '北京'). location: lat,lng. forecast: include 7-day forecast."""
+    """Get current weather and optional 7-day forecast.
+
+    WHEN TO USE:
+    - "今天 XXX 天气" / "北京天气怎么样"      → city="北京"
+    - "未来一周天气"                          → city="北京", forecast=True
+    - GPS coordinates from a device           → location="39.9,116.4"
+
+    PARAMS:
+    - city: city name in Chinese or English (北京 / Beijing / 上海 / Shanghai)
+    - location: "lat,lng" GPS coordinates (alternative to city)
+    - forecast: True to include 7-day forecast"""
     params: dict = {"forecast": forecast}
     if city:
         params["city"] = city
@@ -233,9 +318,19 @@ async def life_weather(city: str = "", location: str = "", forecast: bool = Fals
 
 @mcp.tool()
 async def life_calendar(date: str = "") -> dict:
-    """Get calendar info: lunar date, solar terms, holidays, trading day status.
-    date: YYYY-MM-DD (defaults to today). Returns lunar date, nearest solar terms,
-    whether it's a holiday/workday/trading day, and next trading day if market is closed."""
+    """Calendar info: lunar date, solar terms, holidays, trading day status.
+
+    WHEN TO USE:
+    - "今天农历多少" / "明天是什么节气"
+    - "今天是不是交易日"   ← MOST COMMON USE: check if A-share market is open
+    - "五一放几天假"
+    - You need to confirm market open/close before showing stock data
+
+    PARAMS:
+    - date: YYYY-MM-DD format. Defaults to today if omitted.
+
+    RETURNS includes: lunar date, nearest solar terms, holiday/workday status,
+    is_trading_day flag, next trading day (if market is closed today)."""
     params: dict = {}
     if date:
         params["date"] = date
@@ -248,7 +343,12 @@ async def life_calendar(date: str = "") -> dict:
 
 @mcp.tool()
 async def finance_gold_price() -> dict:
-    """Get real-time gold and precious metal prices (黄金/白银/铂金)."""
+    """Latest gold and precious metal spot prices (Au/Ag/Pt). No params required.
+
+    WHEN TO USE:
+    - "金价多少" / "黄金价格"
+    - Macro context for risk-off sentiment
+    - Comparing precious metals (gold/silver/platinum)"""
     return await _call("/v1/finance/gold-price")
 
 
@@ -258,13 +358,23 @@ async def finance_gold_price() -> dict:
 
 @mcp.tool()
 async def info_trending() -> dict:
-    """Get trending topics / hot search rankings from major Chinese platforms (微博/抖音/知乎 etc)."""
+    """Get trending topics from major Chinese platforms (微博/抖音/知乎). No params.
+
+    WHEN TO USE:
+    - "今天什么话题最火" / "热搜榜"
+    - You need overall public sentiment / what people are talking about
+    - Sanity check whether a stock-related event is trending publicly"""
     return await _call("/v1/info/trending")
 
 
 @mcp.tool()
 async def info_bulletin() -> dict:
-    """Get daily news bulletin / morning briefing (每日简报)."""
+    """Daily morning news briefing — concise digest of important events. No params.
+
+    WHEN TO USE:
+    - "今天的早报" / "每日简报"
+    - User wants a quick "what's happening today" summary
+    - Faster than info_news; pre-curated by editors"""
     return await _call("/v1/info/bulletin")
 
 
