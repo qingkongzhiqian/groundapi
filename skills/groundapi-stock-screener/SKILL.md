@@ -60,7 +60,6 @@ metadata:
 并行获取宏观数据，为选股提供大环境背景：
 - `life_calendar()` → 确认是否交易日
 - `finance_gold_price()` → 金价走势（避险情绪参考）
-- `finance_exchange_rate(from_currency="USD", to_currency="CNY")` → 汇率（外贸/外资敏感行业参考）
 
 ### Step 4 — 对优选结果深度挖掘
 

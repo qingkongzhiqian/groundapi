@@ -1,6 +1,6 @@
 <p align="center">
   <h1 align="center">GroundAPI</h1>
-  <p align="center"><strong>Real-time Data API for AI Agents</strong></p>
+  <p align="center"><strong>Data API for AI Agents</strong></p>
   <p align="center">
     <a href="https://groundapi.net">Website</a> · <a href="https://docs.groundapi.net">Docs</a> · <a href="https://mcp.groundapi.net/mcp">MCP Endpoint</a> · <a href="https://pypi.org/project/groundapi-cli/">CLI</a>
   </p>
@@ -11,7 +11,7 @@
 
 ---
 
-GroundAPI provides a unified data layer for AI Agents — **18 tools** across finance, information, and life services. One API key, three access methods: **REST API**, **MCP**, and **CLI**.
+GroundAPI provides a unified data layer for AI Agents — **11 tools** across finance, information, and life services. One API key, three access methods: **REST API**, **MCP**, and **CLI**.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![MCP](https://img.shields.io/badge/MCP-compatible-green.svg)](https://mcp.groundapi.net/mcp)
@@ -21,9 +21,9 @@ GroundAPI provides a unified data layer for AI Agents — **18 tools** across fi
 
 - [Quick Start](#quick-start)
 - [MCP Tools Reference](#mcp-tools-reference)
-  - [Finance (6 tools)](#finance-6-tools)
-  - [Information (5 tools)](#information-5-tools)
-  - [Life Services (7 tools)](#life-services-7-tools)
+  - [Finance (5 tools)](#finance-5-tools)
+  - [Information (4 tools)](#information-4-tools)
+  - [Life Services (2 tools)](#life-services-2-tools)
 - [REST API](#rest-api)
 - [CLI Reference](#cli-reference)
 - [Agent Skills](#agent-skills)
@@ -70,11 +70,11 @@ groundapi stock --symbol 600519
 
 ## MCP Tools Reference
 
-### Finance (6 tools)
+### Finance (5 tools)
 
 #### `finance_stock` — Securities Data
 
-All-in-one query for A-share stocks, indices, and ETFs. Supports **13 data dimensions** and multi-stock comparison.
+All-in-one query for A-share stocks, indices, and ETFs. Supports **11 data dimensions** and multi-stock comparison.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -84,21 +84,19 @@ All-in-one query for A-share stocks, indices, and ETFs. Supports **13 data dimen
 | `days` | int | `60` | History range for kline/technical |
 | `period` | string | `"d"` | K-line period: `5/15/30/60/d/w/m` |
 
-**13 Available Aspects:**
+**11 Available Aspects:**
 
 | Aspect | Returns | Use When |
 |--------|---------|----------|
 | `overview` | Quick snapshot: quote + profile brief + financial brief | "How's XXXX doing?" |
 | `profile` | Full company info, concepts, index membership, capital structure | "What does this company do?" |
-| `quote` | Real-time price, PE/PB, 5-level bid/ask, limit up/down distance | "Current price?" |
+| `quote` | Latest closing price, PE/PB, limit up/down distance | "Current price?" |
 | `kline` | K-line data (supports 5/15/30/60min, daily, weekly, monthly) | "Show me the chart" |
 | `technical` | MACD, MA, BOLL, KDJ + signal detection (e.g. "DIF crosses above DEA") | "Technical analysis?" |
 | `financial` | 3 financial statements, quarterly P&L, cash flow, dividends, forecasts | "How are the financials?" |
-| `flow` | Capital flow (mega/large/medium/small orders), consecutive inflow/outflow | "Is smart money buying?" |
 | `holders` | Top 10 shareholders, float holders, count trend, fund holdings | "Who are the major shareholders?" |
 | `management` | Executives, board directors, supervisors | "Who's the management?" |
 | `events` | Dividends, share issuance, lock-up expiry, earnings calendar | "When's the next dividend?" |
-| `tick` | Intraday tick-by-tick with buy/sell direction stats | "More buyers or sellers today?" |
 | `summary` | Multi-dimensional factual aggregation (no opinions) | "Give me a full data summary" |
 | `peers` | Same-industry comparison table with PE/PB/market cap ranking | "How does it rank in the sector?" |
 
@@ -107,7 +105,7 @@ All-in-one query for A-share stocks, indices, and ETFs. Supports **13 data dimen
 finance_stock(symbol="600519")
 
 # Deep dive with multiple aspects
-finance_stock(symbol="600519", aspects="quote,technical,financial,flow")
+finance_stock(symbol="600519", aspects="quote,technical,financial")
 
 # Search by name
 finance_stock(keyword="平安")
@@ -176,22 +174,15 @@ finance_search(keyword="AI", type="concept")       # AI concept indices
 finance_search(keyword="沪深300", type="index")    # CSI 300
 ```
 
-#### `finance_exchange_rate` — Currency Exchange
-
-```python
-finance_exchange_rate(from_currency="USD", to_currency="CNY")
-finance_exchange_rate(from_currency="EUR", to_currency="JPY")
-```
-
 #### `finance_gold_price` — Precious Metals
 
 ```python
-finance_gold_price()   # Gold, silver, platinum real-time prices
+finance_gold_price()   # Gold, silver, platinum prices
 ```
 
 ---
 
-### Information (5 tools)
+### Information (4 tools)
 
 #### `info_search` — Web Search
 
@@ -203,12 +194,6 @@ finance_gold_price()   # Gold, silver, platinum real-time prices
 
 ```python
 info_search(query="AI Agent trends 2026", count=20, recency="oneWeek")
-```
-
-#### `info_scrape` — Web Scraper
-
-```python
-info_scrape(url="https://example.com")   # Returns clean markdown
 ```
 
 #### `info_news` — News Headlines
@@ -225,7 +210,7 @@ info_news(category="tech")
 
 #### `info_trending` — Trending Topics
 
-Real-time hot search rankings from Weibo, Douyin, Zhihu, and more.
+Hot search rankings from Weibo, Douyin, Zhihu, and more.
 
 ```python
 info_trending()
@@ -239,7 +224,7 @@ info_bulletin()   # Morning news digest
 
 ---
 
-### Life Services (7 tools)
+### Life Services (2 tools)
 
 #### `life_weather` — Weather
 
@@ -254,44 +239,11 @@ life_weather(city="北京", forecast=True)
 life_weather(location="39.9,116.4")
 ```
 
-#### `life_logistics` — Package Tracking
-
-```python
-life_logistics(number="SF1234567890")              # Auto-detect carrier
-life_logistics(number="1234567890", company="yt")   # Specify carrier
-```
-
-#### `life_ip` — IP Geolocation
-
-```python
-life_ip(address="8.8.8.8")   # Country, city, timezone, ISP
-life_ip()                     # Caller's IP
-```
-
-#### `life_tax` — Income Tax Calculator
-
-```python
-life_tax(monthly_salary=20000, insurance=2000, special_deduction=1500)
-```
-
 #### `life_calendar` — Calendar & Trading Days
 
 ```python
 life_calendar()                  # Today: lunar date, solar terms, holiday, trading day
 life_calendar(date="2026-05-01") # Specific date
-```
-
-#### `life_oil_price` — Fuel Prices
-
-```python
-life_oil_price()                  # National average
-life_oil_price(province="北京")   # Province-specific
-```
-
-#### `life_traffic` — Driving Restrictions
-
-```python
-life_traffic(city="北京")   # Today's restricted plate numbers
 ```
 
 ---
@@ -305,23 +257,16 @@ All endpoints require `X-API-Key` header.
 | Endpoint | Description |
 |----------|-------------|
 | `GET /v1/finance/stock` | Stock/index/ETF data |
-| `GET /v1/finance/market` | Market overview |
 | `GET /v1/finance/stock/screen` | Stock screening |
+| `GET /v1/finance/market` | Market overview |
 | `GET /v1/finance/search` | Securities search |
-| `GET /v1/finance/exchange-rate` | Exchange rates |
 | `GET /v1/finance/gold-price` | Gold & precious metals |
 | `GET /v1/info/search` | Web search |
-| `GET /v1/info/scrape` | Web scraping |
 | `GET /v1/info/news` | News headlines |
 | `GET /v1/info/trending` | Trending topics |
 | `GET /v1/info/bulletin` | Daily briefing |
 | `GET /v1/life/weather` | Weather |
-| `GET /v1/life/logistics` | Package tracking |
-| `GET /v1/life/ip` | IP geolocation |
-| `GET /v1/life/tax` | Tax calculator |
 | `GET /v1/life/calendar` | Calendar info |
-| `GET /v1/life/oil-price` | Fuel prices |
-| `GET /v1/life/traffic` | Driving restrictions |
 
 ```bash
 # Stock overview
@@ -366,7 +311,7 @@ groundapi config set-key YOUR_API_KEY
 
 ```bash
 # Stock quotes
-groundapi stock --symbol 600519                            # Real-time quote
+groundapi stock --symbol 600519                            # Latest quote
 groundapi stock --keyword 贵州茅台                          # Search by name
 groundapi stock --symbol 600519 --date 2024-12-31          # Specific date
 groundapi stock --symbol 600519 --days 30                  # Last 30 days
@@ -382,10 +327,12 @@ groundapi market                                           # Indices + macro
 groundapi market --include sectors,valuation               # With sectors + valuation
 groundapi market --sector 半导体 --type industry           # Sector drill-down
 
-# Funds
-groundapi fund                                             # Fund ranking
-groundapi fund --keyword 沪深300                            # Search funds
-groundapi fund --code 110011                               # Fund details
+# Finance search
+groundapi fsearch 芯片                                     # Search securities
+groundapi fsearch AI --type concept                        # AI concept indices
+
+# Gold price
+groundapi gold                                             # Precious metals prices
 ```
 
 ### Information
@@ -393,9 +340,10 @@ groundapi fund --code 110011                               # Fund details
 ```bash
 groundapi search "AI Agent"                                # Web search
 groundapi search "AI Agent" --count 20 --recency oneWeek   # With filters
-groundapi scrape https://example.com                       # Scrape webpage
 groundapi news                                             # Finance news
 groundapi news --category tech --limit 10                  # Tech news
+groundapi trending                                         # Trending topics
+groundapi bulletin                                         # Daily briefing
 ```
 
 ### Life Services
@@ -404,8 +352,7 @@ groundapi news --category tech --limit 10                  # Tech news
 groundapi weather --city 北京                               # Current weather
 groundapi weather --city 北京 --forecast                    # 7-day forecast
 groundapi weather --location 39.9,116.4                    # By coordinates
-groundapi logistics SF1234567890                           # Track package
-groundapi ip 8.8.8.8                                       # IP lookup
+groundapi calendar                                         # Today's calendar info
 ```
 
 ---
@@ -417,10 +364,9 @@ Pre-built skills that combine GroundAPI tools into automated workflows. Install 
 | Skill | Description |
 |-------|-------------|
 | [Market Briefing](skills/groundapi-market-briefing) | Generates daily A-share market summary — indices, sectors, hot stocks, anomalies |
-| [A-Share Analyst](skills/groundapi-a-share-analyst) | Deep analysis with 13 data dimensions — outputs structured report with technicals, financials, capital flow |
+| [A-Share Analyst](skills/groundapi-a-share-analyst) | Deep analysis with 11 data dimensions — outputs structured report with technicals and financials |
 | [Stock Screener](skills/groundapi-stock-screener) | Natural language stock screening — "find undervalued bank stocks with high dividends" |
-| [Web Researcher](skills/groundapi-web-researcher) | Multi-source research — searches, scrapes, and synthesizes information |
-| [Context Aware](skills/groundapi-context-aware) | Location-aware daily assistant — weather, calendar, traffic, news in one shot |
+| [Context Aware](skills/groundapi-context-aware) | Daily assistant — weather, calendar, news in one shot |
 | [Anomaly Tracker](skills/groundapi-anomaly-tracker) | Market anomaly detection — unusual volume, price gaps, limit-up streaks |
 
 ---

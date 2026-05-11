@@ -1,6 +1,6 @@
 <p align="center">
   <h1 align="center">GroundAPI</h1>
-  <p align="center"><strong>面向 AI Agent 的实时数据 API</strong></p>
+  <p align="center"><strong>面向 AI Agent 的数据 API</strong></p>
   <p align="center">
     <a href="https://groundapi.net">官网</a> · <a href="https://docs.groundapi.net">文档</a> · <a href="https://mcp.groundapi.net/mcp">MCP 端点</a> · <a href="https://pypi.org/project/groundapi-cli/">CLI</a>
   </p>
@@ -11,7 +11,7 @@
 
 ---
 
-GroundAPI 为 AI Agent 提供一站式实时数据层 — **18 个工具**，覆盖金融、信息、生活三大类别。一个 API Key，三种接入方式：**REST API**、**MCP**、**CLI**。
+GroundAPI 为 AI Agent 提供一站式数据层 — **11 个工具**，覆盖金融、信息、生活三大类别。一个 API Key，三种接入方式：**REST API**、**MCP**、**CLI**。
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![MCP](https://img.shields.io/badge/MCP-compatible-green.svg)](https://mcp.groundapi.net/mcp)
@@ -21,9 +21,9 @@ GroundAPI 为 AI Agent 提供一站式实时数据层 — **18 个工具**，覆
 
 - [快速开始](#快速开始)
 - [MCP 工具详解](#mcp-工具详解)
-  - [金融数据（6 个工具）](#金融数据6-个工具)
-  - [信息检索（5 个工具）](#信息检索5-个工具)
-  - [生活服务（7 个工具）](#生活服务7-个工具)
+  - [金融数据（5 个工具）](#金融数据5-个工具)
+  - [信息检索（4 个工具）](#信息检索4-个工具)
+  - [生活服务（2 个工具）](#生活服务2-个工具)
 - [REST API](#rest-api)
 - [CLI 命令参考](#cli-命令参考)
 - [Agent Skills](#agent-skills)
@@ -70,11 +70,11 @@ groundapi stock --symbol 600519
 
 ## MCP 工具详解
 
-### 金融数据（6 个工具）
+### 金融数据（5 个工具）
 
 #### `finance_stock` — 证券数据一站式查询
 
-支持个股、指数、ETF，**13 个数据维度**，支持多股对比。
+支持个股、指数、ETF，**11 个数据维度**，支持多股对比。
 
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
@@ -84,21 +84,19 @@ groundapi stock --symbol 600519
 | `days` | int | `60` | K线/技术面历史天数 |
 | `period` | string | `"d"` | K线周期：`5/15/30/60/d/w/m` |
 
-**13 个数据维度：**
+**11 个数据维度：**
 
 | 维度 | 返回内容 | 适用场景 |
 |------|----------|----------|
 | `overview` | 快速概览：报价 + 简介 + 财务摘要 | "XXX 怎么样" |
 | `profile` | 公司全档案、概念、所属指数、股本结构 | "这公司是做什么的" |
-| `quote` | 实时价格、PE/PB、五档盘口、距涨跌停距离 | "现在多少钱" |
+| `quote` | 最新收盘价、PE/PB、距涨跌停距离 | "现在多少钱" |
 | `kline` | K线数据（支持 5/15/30/60 分钟、日/周/月线） | "走势怎么样" |
 | `technical` | MACD/MA/BOLL/KDJ + 信号检测（如"DIF上穿DEA"） | "技术面怎么样" |
 | `financial` | 三大报表、季度利润、现金流、分红、业绩预告 | "财报怎么样" |
-| `flow` | 资金流向（超大/大/中/小单）、连续净流入/出天数 | "主力在买还是卖" |
 | `holders` | 十大股东、流通股东、股东数趋势、基金持仓 | "十大股东是谁" |
 | `management` | 高管、董事、监事名单 | "管理层有谁" |
 | `events` | 分红、增发、解禁、业绩预告日历 | "什么时候分红" |
-| `tick` | 当天逐笔交易（买卖方向统计） | "今天买盘多还是卖盘多" |
 | `summary` | 多维度事实聚合（不含主观结论） | "给我一个全面的数据汇总" |
 | `peers` | 同行业对比表（PE/PB/市值排名） | "在银行股里排第几" |
 
@@ -107,7 +105,7 @@ groundapi stock --symbol 600519
 finance_stock(symbol="600519")
 
 # 多维度深度分析
-finance_stock(symbol="600519", aspects="quote,technical,financial,flow")
+finance_stock(symbol="600519", aspects="quote,technical,financial")
 
 # 按名称搜索
 finance_stock(keyword="平安")
@@ -176,22 +174,15 @@ finance_search(keyword="AI", type="concept")       # AI概念指数
 finance_search(keyword="沪深300", type="index")    # 沪深300
 ```
 
-#### `finance_exchange_rate` — 汇率查询
-
-```python
-finance_exchange_rate(from_currency="USD", to_currency="CNY")
-finance_exchange_rate(from_currency="EUR", to_currency="JPY")
-```
-
 #### `finance_gold_price` — 贵金属价格
 
 ```python
-finance_gold_price()   # 黄金、白银、铂金实时价格
+finance_gold_price()   # 黄金、白银、铂金价格
 ```
 
 ---
 
-### 信息检索（5 个工具）
+### 信息检索（4 个工具）
 
 #### `info_search` — 网络搜索
 
@@ -203,12 +194,6 @@ finance_gold_price()   # 黄金、白银、铂金实时价格
 
 ```python
 info_search(query="最新AI政策", count=20, recency="oneWeek")
-```
-
-#### `info_scrape` — 网页抓取
-
-```python
-info_scrape(url="https://example.com")   # 返回 Markdown 格式内容
 ```
 
 #### `info_news` — 新闻头条
@@ -225,7 +210,7 @@ info_news(category="tech")
 
 #### `info_trending` — 全网热搜
 
-微博、抖音、知乎等平台实时热搜榜。
+微博、抖音、知乎等平台热搜榜。
 
 ```python
 info_trending()
@@ -239,7 +224,7 @@ info_bulletin()   # 每日新闻摘要
 
 ---
 
-### 生活服务（7 个工具）
+### 生活服务（2 个工具）
 
 #### `life_weather` — 天气查询
 
@@ -254,44 +239,11 @@ life_weather(city="北京", forecast=True)
 life_weather(location="39.9,116.4")
 ```
 
-#### `life_logistics` — 快递追踪
-
-```python
-life_logistics(number="SF1234567890")              # 自动识别快递公司
-life_logistics(number="1234567890", company="yt")   # 指定快递公司
-```
-
-#### `life_ip` — IP 地理定位
-
-```python
-life_ip(address="8.8.8.8")   # 国家、城市、时区、运营商
-life_ip()                     # 查询本机 IP
-```
-
-#### `life_tax` — 个人所得税计算器
-
-```python
-life_tax(monthly_salary=20000, insurance=2000, special_deduction=1500)
-```
-
 #### `life_calendar` — 万年历
 
 ```python
 life_calendar()                  # 今天：农历、节气、节假日、是否交易日
 life_calendar(date="2026-05-01") # 查询指定日期
-```
-
-#### `life_oil_price` — 油价查询
-
-```python
-life_oil_price()                  # 全国均价
-life_oil_price(province="北京")   # 指定省份
-```
-
-#### `life_traffic` — 限行查询
-
-```python
-life_traffic(city="北京")   # 今日限行尾号
 ```
 
 ---
@@ -305,23 +257,16 @@ Base URL：`https://api.groundapi.net`
 | 端点 | 说明 |
 |------|------|
 | `GET /v1/finance/stock` | 股票/指数/ETF 数据 |
-| `GET /v1/finance/market` | 市场全景 |
 | `GET /v1/finance/stock/screen` | 股票筛选 |
+| `GET /v1/finance/market` | 市场全景 |
 | `GET /v1/finance/search` | 证券搜索 |
-| `GET /v1/finance/exchange-rate` | 汇率 |
 | `GET /v1/finance/gold-price` | 贵金属价格 |
 | `GET /v1/info/search` | 网络搜索 |
-| `GET /v1/info/scrape` | 网页抓取 |
 | `GET /v1/info/news` | 新闻 |
 | `GET /v1/info/trending` | 热搜 |
 | `GET /v1/info/bulletin` | 每日简报 |
 | `GET /v1/life/weather` | 天气 |
-| `GET /v1/life/logistics` | 快递追踪 |
-| `GET /v1/life/ip` | IP 定位 |
-| `GET /v1/life/tax` | 个税计算 |
 | `GET /v1/life/calendar` | 万年历 |
-| `GET /v1/life/oil-price` | 油价 |
-| `GET /v1/life/traffic` | 限行 |
 
 ```bash
 # 个股概览
@@ -366,7 +311,7 @@ groundapi config set-key 你的_API_KEY
 
 ```bash
 # A 股行情
-groundapi stock --symbol 600519                            # 实时行情
+groundapi stock --symbol 600519                            # 最新行情
 groundapi stock --keyword 贵州茅台                          # 搜索股票
 groundapi stock --symbol 600519 --date 2024-12-31          # 指定日期日K
 groundapi stock --symbol 600519 --days 30                  # 最近30天历史
@@ -382,10 +327,12 @@ groundapi market                                           # 大盘+宏观
 groundapi market --include sectors,valuation               # 板块+估值
 groundapi market --sector 半导体 --type industry           # 板块详情
 
-# 基金
-groundapi fund                                             # 基金排行
-groundapi fund --keyword 沪深300                            # 搜索基金
-groundapi fund --code 110011                               # 基金详情
+# 证券搜索
+groundapi fsearch 芯片                                     # 搜索证券
+groundapi fsearch AI --type concept                        # AI概念指数
+
+# 贵金属价格
+groundapi gold                                             # 贵金属价格
 ```
 
 ### 资讯
@@ -393,19 +340,19 @@ groundapi fund --code 110011                               # 基金详情
 ```bash
 groundapi search "AI Agent"                                # 网络搜索
 groundapi search "AI Agent" --count 20 --recency oneWeek   # 限定时间
-groundapi scrape https://example.com                       # 网页抓取
 groundapi news                                             # 财经新闻
 groundapi news --category tech --limit 10                  # 科技新闻
+groundapi trending                                         # 全网热搜
+groundapi bulletin                                         # 每日简报
 ```
 
 ### 生活
 
 ```bash
-groundapi weather --city 北京                               # 实时天气
+groundapi weather --city 北京                               # 天气查询
 groundapi weather --city 北京 --forecast                    # 7天预报
 groundapi weather --location 39.9,116.4                    # 经纬度查询
-groundapi logistics SF1234567890                           # 快递追踪
-groundapi ip 8.8.8.8                                       # IP 定位
+groundapi calendar                                         # 今日万年历
 ```
 
 ---
@@ -417,10 +364,9 @@ groundapi ip 8.8.8.8                                       # IP 定位
 | 技能 | 说明 |
 |------|------|
 | [Market Briefing](skills/groundapi-market-briefing) | 每日 A 股市场速报 — 指数、板块、热股、异动一网打尽 |
-| [A-Share Analyst](skills/groundapi-a-share-analyst) | 13 维度个股深度分析 — 输出结构化研报，含技术面、财务、资金流 |
+| [A-Share Analyst](skills/groundapi-a-share-analyst) | 11 维度个股深度分析 — 输出结构化研报，含技术面、财务 |
 | [Stock Screener](skills/groundapi-stock-screener) | 自然语言选股 — "找低估值高分红的银行股" |
-| [Web Researcher](skills/groundapi-web-researcher) | 多源深度调研 — 搜索、抓取、综合分析一条龙 |
-| [Context Aware](skills/groundapi-context-aware) | 场景感知生活助手 — 天气、日历、限行、新闻一站查 |
+| [Context Aware](skills/groundapi-context-aware) | 生活助手 — 天气、日历、新闻一站查 |
 | [Anomaly Tracker](skills/groundapi-anomaly-tracker) | 市场异动监测 — 异常放量、跳空缺口、连板追踪 |
 
 ---

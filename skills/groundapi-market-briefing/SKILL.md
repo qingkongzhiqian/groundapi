@@ -50,7 +50,6 @@ metadata:
 
 并行获取宏观数据：
 - `finance_gold_price()` → 黄金实时价格（避险情绪参考）
-- `finance_exchange_rate(from_currency="USD", to_currency="CNY")` → 美元兑人民币汇率
 
 ### Step 4 — 热点股池
 

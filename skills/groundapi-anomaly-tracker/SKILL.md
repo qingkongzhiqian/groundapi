@@ -1,6 +1,6 @@
 ---
 name: groundapi-anomaly-tracker
-description: Track A-share market anomalies — limit-up streaks, unusual volume, large capital flows — and drill into individual stocks for detailed analysis. Powered by GroundAPI MCP tools.
+description: Track A-share market anomalies — limit-up streaks, unusual volume — and drill into individual stocks for detailed analysis. Powered by GroundAPI MCP tools.
 metadata:
   openclaw:
     requires:
@@ -49,14 +49,14 @@ metadata:
 
 ### Step 3 — 对异动股深度挖掘
 
-对用户感兴趣的或最显眼的异动股，获取资金和技术数据：
-`finance_stock(symbol="XXXXXX", aspects="flow,technical,quote")`
+对用户感兴趣的或最显眼的异动股，获取技术和行情数据：
+`finance_stock(symbol="XXXXXX", aspects="technical,quote,kline")`
 
 关键看：
-- `flow.cumulative_main_net` — 主力净流入金额
-- `flow.consecutive_inflow_days` — 连续净流入天数
-- `technical.signals` — 技术信号列表
+- `technical.signals` — 技术信号列表（金叉/死叉/超买超卖等）
+- `technical.macd` / `technical.ma` / `technical.kdj` — 技术指标
 - `quote.volume_ratio` — 量比
+- `quote.change_pct` / `quote.turnover_rate` — 涨跌幅与换手率
 
 ### Step 4 — 概念关联分析
 
@@ -96,7 +96,7 @@ metadata:
 - 今日涨幅：+XX%
 - 量比：X.X（放量/缩量）
 - 封板资金：XX亿
-- 近5日主力净流入：XX亿
+- 换手率：X.X%
 - 技术信号：（列出 signals）
 - 所属概念：XXX, XXX
 
