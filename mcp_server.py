@@ -10,13 +10,15 @@ GroundAPI API Key via ``Authorization: Bearer sk_gapi_...``.
 """
 
 import argparse
+import logging
 import os
 from pathlib import Path
 
 from dotenv import load_dotenv
 import httpx
 from fastmcp import FastMCP
-from fastmcp.server.auth.providers.debug import DebugTokenVerifier
+from fastmcp.server.auth import TokenVerifier
+from fastmcp.server.auth.auth import AccessToken
 from fastmcp.server.dependencies import get_access_token
 
 _env_file = Path(__file__).resolve().parent.parent.parent / ".env"
@@ -25,9 +27,61 @@ if _env_file.exists():
 
 API_BASE = os.getenv("API_BASE_URL", "http://localhost:8000")
 
-auth = DebugTokenVerifier(
-    validate=lambda token: token.startswith("sk_gapi_"),
-)
+logger = logging.getLogger("groundapi.mcp")
+
+
+class ApiKeyVerifier(TokenVerifier):
+    """Real authentication for the MCP server.
+
+    Replaces the previous ``DebugTokenVerifier`` which only checked the
+    ``sk_gapi_`` prefix. This verifier now runs the same DB-backed validation
+    used by the REST API (``api.middleware.auth.validate_api_key``), so:
+
+    * Forged tokens with the right prefix but no DB row are rejected at the
+      MCP layer instead of being forwarded to backend (saves CPU/network).
+    * Disabled keys (``is_active=False``) are rejected immediately.
+    * Redis caching is reused — same hot-path latency as the REST API.
+    * The configured ``INTERNAL_MCP_TOKEN`` keeps working so the
+      ``ai_analyze`` round-trip (backend → MCP → backend) is unaffected.
+
+    Returned ``AccessToken.client_id`` carries the user_id so tools that
+    need per-user context can read it via ``get_access_token().client_id``.
+    """
+
+    async def verify_token(self, token: str) -> AccessToken | None:
+        if not token:
+            return None
+
+        # Lazy import keeps module import cheap and avoids circular imports
+        # while still letting us share the *exact* validation logic with the
+        # REST API path.
+        from api.database import AsyncSessionLocal
+        from api.middleware.auth import validate_api_key
+        from api.services.cache import get_redis
+
+        try:
+            redis = await get_redis()
+            async with AsyncSessionLocal() as db:
+                auth_info = await validate_api_key(token, db, redis)
+                # validate_api_key may issue an UPDATE on api_keys.last_used_at;
+                # commit so it actually lands. No-op when nothing was written.
+                await db.commit()
+        except Exception:
+            logger.exception("ApiKeyVerifier failure during token validation")
+            return None
+
+        if auth_info is None:
+            return None
+
+        return AccessToken(
+            token=token,
+            client_id=auth_info["user_id"],
+            scopes=[auth_info.get("plan") or "free"],
+            expires_at=None,
+        )
+
+
+auth = ApiKeyVerifier()
 
 mcp = FastMCP(
     "GroundAPI",
@@ -378,24 +432,16 @@ async def info_bulletin() -> dict:
     return await _call("/v1/info/bulletin")
 
 
-def _init_telemetry() -> None:
-    otel_enabled = os.getenv("OTEL_ENABLED", "").lower() in ("true", "1", "yes")
-    otel_endpoint = os.getenv("OTEL_ENDPOINT", "")
-    otel_instance_id = os.getenv("OTEL_INSTANCE_ID", "")
-    otel_token = os.getenv("OTEL_TOKEN", "")
-
-    if otel_enabled and otel_endpoint:
-        from api.telemetry import setup_telemetry
-        setup_telemetry(
-            "groundapi-mcp",
-            otel_endpoint=otel_endpoint,
-            otel_instance_id=otel_instance_id,
-            otel_token=otel_token,
-        )
-
-
 def main():
-    _init_telemetry()
+    logfire_token = os.getenv("LOGFIRE_TOKEN", "")
+    if logfire_token:
+        import logfire
+        logfire.configure(
+            token=logfire_token,
+            service_name="groundapi-mcp",
+            service_version="3.0.0",
+        )
+        logfire.instrument_httpx()
 
     parser = argparse.ArgumentParser(description="GroundAPI MCP Server")
     parser.add_argument("--host", default="0.0.0.0")
