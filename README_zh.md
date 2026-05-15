@@ -404,7 +404,7 @@ https://mcp.groundapi.net/mcp
 - API 文档：[docs.groundapi.net](https://docs.groundapi.net)
 - MCP 端点：`https://mcp.groundapi.net/mcp`
 - CLI (PyPI)：[groundapi-cli](https://pypi.org/project/groundapi-cli/)
-- mcp.so：[GroundAPI on mcp.so](https://mcp.so)
+- mcp.so：[GroundAPI on mcp.so](https://mcp.so/server/groundapi)
 
 ## 许可证
 

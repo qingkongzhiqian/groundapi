@@ -404,7 +404,7 @@ Get your API key at [groundapi.net](https://groundapi.net).
 - API Docs: [docs.groundapi.net](https://docs.groundapi.net)
 - MCP Endpoint: `https://mcp.groundapi.net/mcp`
 - CLI on PyPI: [groundapi-cli](https://pypi.org/project/groundapi-cli/)
-- mcp.so: [GroundAPI on mcp.so](https://mcp.so)
+- mcp.so: [GroundAPI on mcp.so](https://mcp.so/server/groundapi)
 
 ## License
 

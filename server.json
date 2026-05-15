@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.qingkongzhiqian/groundapi",
+  "title": "GroundAPI",
+  "description": "Real-time data API for AI Agents. 11 MCP tools across 3 categories: Finance (stock data with 11 aspects, market overview, stock screener, universal search across 11,780+ securities, gold price), Information (web search, news headlines, trending topics, daily briefing), Life Services (weather/forecast, calendar). One API key, 500 free calls/month.",
+  "version": "3.0.0",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.groundapi.net/mcp",
+      "headers": [
+        {
+          "name": "X-API-Key",
+          "description": "Your GroundAPI API key. Sign up at https://groundapi.net to get one.",
+          "isRequired": true,
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}
